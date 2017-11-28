@@ -9,7 +9,7 @@ namespace Carica\BitmapToSVG\Vectorizer {
   /**
    * Vectorize an image by tracing paths
    *
-   * This is a port/adaption of https://github.com/jankovicsandras/BitmapToSVGjs
+   * This is a port/adaption of https://github.com/jankovicsandras/imagetracerjs
    */
   class Paths implements VectorizerInterface {
 

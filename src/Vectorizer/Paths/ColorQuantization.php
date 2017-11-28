@@ -3,6 +3,7 @@
 namespace Carica\BitmapToSVG\Vectorizer\Paths {
 
   use Carica\BitmapToSVG\Color;
+  use Carica\BitmapToSVG\Filter\Blur;
   use Carica\BitmapToSVG\Utility\Options;
 
   class ColorQuantization {
@@ -81,7 +82,8 @@ namespace Carica\BitmapToSVG\Vectorizer\Paths {
       );
 
       $palette = $this->getPalette();
-      $image = $this->getBlurred($this->_image, $this->_options[self::OPTION_BLUR_FACTOR]);
+      $image = $this->_image;
+      (new Blur($this->_options[self::OPTION_BLUR_FACTOR]))->apply($image);
 
       $accumulator = [];
       $numberOfCycles = $this->_options[self::OPTION_CYCLES] > 0 ? $this->_options[self::OPTION_CYCLES] : 1;
@@ -169,73 +171,6 @@ namespace Carica\BitmapToSVG\Vectorizer\Paths {
         }
       }
       return $closestColorIndex;
-    }
-
-    /**
-     * @param $image
-     * @param int $blurFactor
-     * @return mixed
-     *
-     * @author Martijn Frazer, idea based on http://stackoverflow.com/a/20264482
-     */
-    private function getBlurred($image, int $blurFactor = 0) {
-      $originalWidth = \imagesx($image);
-      $originalHeight = \imagesy($image);
-
-      $smallestWidth = \ceil($originalWidth * (0.5 ** $blurFactor));
-      $smallestHeight = \ceil($originalHeight * (0.5 ** $blurFactor));
-
-      // for the first run, the previous image is the original input
-      $prevImage = $nextImage = $image;
-      $prevWidth = $nextWidth = $originalWidth;
-      $prevHeight = $nextHeight = $originalHeight;
-
-      // scale way down and gradually scale back up, blurring all the way
-      for($i = 1; $i < $blurFactor; $i++) {
-        // determine dimensions of next image
-        $nextWidth = $smallestWidth * (2 ** $i);
-        $nextHeight = $smallestHeight * (2 ** $i);
-
-        // resize previous image to next size
-        $nextImage = \imagecreatetruecolor($nextWidth, $nextHeight);
-        \imagecopyresized(
-          $nextImage, $prevImage,
-          0, 0, 0, 0,
-          $nextWidth, $nextHeight, $prevWidth, $prevHeight
-        );
-
-        // apply blur filter
-        \imagefilter($nextImage, IMG_FILTER_GAUSSIAN_BLUR);
-
-        // cleanup $prevImage
-        if ($prevImage !== $image) {
-          \imagedestroy($prevImage);
-        }
-
-        // now the new image becomes the previous image for the next step
-        $prevImage = $nextImage;
-        $prevWidth = $nextWidth;
-        $prevHeight = $nextHeight;
-      }
-
-      $result = \imagecreatetruecolor($originalWidth, $originalHeight);
-      // scale back to original size and blur one more time
-      \imagecopyresized(
-        $result, $nextImage,
-        0, 0, 0, 0,
-        $originalWidth, $originalHeight, $nextWidth, $nextHeight
-      );
-      if ($blurFactor > 0) {
-        \imagefilter($result, IMG_FILTER_GAUSSIAN_BLUR);
-      }
-
-      // clean up
-      if ($nextImage !== $image) {
-        \imagedestroy($nextImage);
-      }
-
-      // return result
-      return $result;
     }
   }
 }
