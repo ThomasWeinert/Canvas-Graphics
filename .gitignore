@@ -1,0 +1,20 @@
+# Ignore generated docs
+docs/
+
+# Ignore composer files
+vendor
+
+# Ignore IDE specific files
+## PHPStorm
+.idea
+
+## Eclipse
+.settings
+.project
+.buildpath
+
+/build
+/tools
+
+/phpunit.xml
+

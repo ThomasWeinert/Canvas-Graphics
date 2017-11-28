@@ -1,0 +1,10 @@
+{
+  "autoload" : {
+    "psr-4" : {
+      "Carica\\BitmapToSVG\\" : "src/"
+    }
+  },
+  "require": {
+    "ksubileau/color-thief-php": "^1.3"
+  }
+}
