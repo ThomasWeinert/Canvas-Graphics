@@ -9,6 +9,9 @@ namespace Carica\BitmapToSVG {
    * @property int $green
    * @property int $blue
    * @property int $alpha
+   * @property-read float $hue
+   * @property-read float $saturation
+   * @property-read float $lightness
    */
   class Color implements \ArrayAccess {
 
@@ -31,16 +34,20 @@ namespace Carica\BitmapToSVG {
     }
 
     public function __toString() {
+      $hsl = $this->asHSL();
       return sprintf(
-        'rgba(%d, %d, %d, %d)',
+        'rgba(%d, %d, %d, %d), hsl(%01.2f, %01.2f, %01.2f)',
         $this->_rgba['red'],
         $this->_rgba['green'],
         $this->_rgba['blue'],
-        $this->_rgba['alpha']
+        $this->_rgba['alpha'],
+        $hsl['hue'],
+        $hsl['saturation'],
+        $hsl['lightness']
       );
     }
 
-    public function asHex($withAlpha = FALSE) {
+    public function asHexString($withAlpha = FALSE) {
       if ($withAlpha) {
         return sprintf(
           '#%02x%02x%02x%02x',
@@ -61,6 +68,13 @@ namespace Carica\BitmapToSVG {
         }
         return $result;
       }
+    }
+
+    public function asHSL() {
+      if (NULL === $this->_hsl) {
+        $this->_hsl = self::convertRGBToHSL($this->_rgba['red'], $this->_rgba['green'], $this->_rgba['blue']);
+      }
+      return $this->_hsl;
     }
 
     /**
@@ -133,14 +147,17 @@ namespace Carica\BitmapToSVG {
       case 'r':
       case 'red':
         $this->_rgba['red'] = $value;
+        $this->_hsl = NULL;
         return;
       case 'g':
       case 'green':
         $this->_rgba['green'] = $value;
+        $this->_hsl = NULL;
         return;
       case 'b':
       case 'blue':
         $this->_rgba['blue'] = $value;
+        $this->_hsl = NULL;
         return;
       case 'a':
       case 'alpha':
@@ -164,6 +181,15 @@ namespace Carica\BitmapToSVG {
       case 'a':
       case 'alpha':
         return $this->_rgba['alpha'];
+      case 'h':
+      case 'hue':
+        return $this->asHSL()['hue'];
+      case 's':
+      case 'saturation':
+        return $this->asHSL()['saturation'];
+      case 'l':
+      case 'lightness':
+        return $this->asHSL()['lightness'];
       }
       throw new \LogicException('Invalid property name: '.$name);
     }

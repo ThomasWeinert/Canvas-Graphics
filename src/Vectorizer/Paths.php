@@ -2,6 +2,7 @@
 
 namespace Carica\BitmapToSVG\Vectorizer {
 
+  use Carica\BitmapToSVG\Color;
   use Carica\BitmapToSVG\Vectorizer as VectorizerInterface;
   use Carica\BitmapToSVG\Vectorizer\Paths\ColorQuantization;
   use Carica\BitmapToSVG\Utility\Options;
@@ -124,8 +125,9 @@ namespace Carica\BitmapToSVG\Vectorizer {
 
       $document = $parent->ownerDocument;
       foreach ($layers as $colorIndex => $paths) {
+        /** @var Color $color */
         $color = $palette[$colorIndex];
-        $rgb = $color->asHex();
+        $rgb = $color->asHexString();
         $opacity = $color['alpha'] < 255 ? number_format($color['alpha'] / 255, 2) : '';
         foreach ($paths as $path) {
           if ($path['is_hole']) {
