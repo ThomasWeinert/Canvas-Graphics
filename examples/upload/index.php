@@ -21,6 +21,7 @@ if (
     move_uploaded_file($_FILES['bitmap']['tmp_name'], $bitmapFile)
   ) {
     // start converting
+    $image = FALSE;
     switch ($bitmapType) {
     case IMAGETYPE_JPEG :
       $image = imagecreatefromjpeg($bitmapFile);
@@ -29,18 +30,22 @@ if (
       $image = imagecreatefrompng($bitmapFile);
       break;
     }
-    $tracer = new \Carica\BitmapToSVG\Vectorizer\Paths();
-    $svg = $tracer->toSVG($image);
-    $svg->formatOutput = TRUE;
-    $svgXml = $svg->saveXML();
-    $svg->save($path.'/'.$id.'.svg');
+    if ($image) {
+      $svg = new \Carica\BitmapToSVG\SVG\Document(
+        imagesx($image),
+        imagesy($image)
+      );
+      $svg->append(new \Carica\BitmapToSVG\Vectorizer\Paths($image));
+      $xml = $svg->getXML();
+      file_put_contents($path.'/'.$id.'.svg', $xml);
+    }
   }
 }
 
 $values = [
   'bitmap' => isset($bitmapFile) ? htmlspecialchars('images/'.basename($bitmapFile)): '',
-  'svg_xml' => isset($svg) ? htmlspecialchars($svgXml) : '',
-  'svg_data' => isset($svg) ? htmlspecialchars('data:image/svg+xml;base64,'.base64_encode($svgXml)) : '',
+  'svg_xml' => isset($svg) ? htmlspecialchars($xml) : '',
+  'svg_data' => isset($svg) ? htmlspecialchars('data:image/svg+xml;base64,'.base64_encode($xml)) : '',
   'size_bitmap' => isset($bitmapFile) ? filesize($bitmapFile) : '',
   'size_svg' => isset($bitmapFile) ? filesize($path.'/'.$id.'.svg') : ''
 ]

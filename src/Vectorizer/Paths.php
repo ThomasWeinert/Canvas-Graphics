@@ -3,7 +3,7 @@
 namespace Carica\BitmapToSVG\Vectorizer {
 
   use Carica\BitmapToSVG\Color;
-  use Carica\BitmapToSVG\Vectorizer as VectorizerInterface;
+  use Carica\BitmapToSVG\SVG;
   use Carica\BitmapToSVG\Vectorizer\Paths\ColorQuantization;
   use Carica\BitmapToSVG\Utility\Options;
 
@@ -12,29 +12,7 @@ namespace Carica\BitmapToSVG\Vectorizer {
    *
    * This is a port/adaption of https://github.com/jankovicsandras/imagetracerjs
    */
-  class Paths implements VectorizerInterface {
-
-    public const OPTION_MINIMUM_PATH_NODES = 'minimum_path_nodes';
-    public const OPTION_ENHANCE_RIGHT_ANGLE = 'enhance_right_angle';
-    public const OPTION_LINE_THRESHOLD = 'line_threshold';
-    public const OPTION_QUADRATIC_SPLINE_THRESHOLD = 'quadratic_spline_threshold';
-
-    public const OPTION_BLUR_FILTER_DEVIATION = 'blur_filter_deviation';
-
-    private static $_optionDefaults = [
-      self::OPTION_MINIMUM_PATH_NODES => 8,
-      self::OPTION_ENHANCE_RIGHT_ANGLE => FALSE,
-      self::OPTION_LINE_THRESHOLD => 1.0,
-      self::OPTION_QUADRATIC_SPLINE_THRESHOLD => 1.0,
-      self::OPTION_BLUR_FILTER_DEVIATION => 0,
-
-      ColorQuantization::OPTION_PALETTE => ColorQuantization::PALETTE_SAMPLED,
-      ColorQuantization::OPTION_NUMBER_OF_COLORS => 16,
-      ColorQuantization::OPTION_BLUR_FACTOR => 2,
-      ColorQuantization::OPTION_CYCLES => 3,
-      ColorQuantization::OPTION_MINIMUM_COLOR_RATIO => 0
-    ];
-    private $_options;
+  class Paths implements SVG\Appendable {
 
     private const PATH_SCAN_LOOKUP = [
       [[-1,-1,-1,-1], [-1,-1,-1,-1], [-1,-1,-1,-1], [-1,-1,-1,-1]],
@@ -68,46 +46,39 @@ namespace Carica\BitmapToSVG\Vectorizer {
     private const DIRECTION_NORTH_EAST = 7;
     private const DIRECTION_CENTER = 8;
 
-    public function __construct(array $options = []) {
+    public const OPTION_MINIMUM_PATH_NODES = 'minimum_path_nodes';
+    public const OPTION_ENHANCE_RIGHT_ANGLE = 'enhance_right_angle';
+    public const OPTION_LINE_THRESHOLD = 'line_threshold';
+    public const OPTION_QUADRATIC_SPLINE_THRESHOLD = 'quadratic_spline_threshold';
+
+    public const OPTION_BLUR_FILTER_DEVIATION = 'blur_filter_deviation';
+
+    private static $_optionDefaults = [
+      self::OPTION_MINIMUM_PATH_NODES => 8,
+      self::OPTION_ENHANCE_RIGHT_ANGLE => FALSE,
+      self::OPTION_LINE_THRESHOLD => 1.0,
+      self::OPTION_QUADRATIC_SPLINE_THRESHOLD => 1.0,
+      self::OPTION_BLUR_FILTER_DEVIATION => 0,
+
+      ColorQuantization::OPTION_PALETTE => ColorQuantization::PALETTE_SAMPLED,
+      ColorQuantization::OPTION_NUMBER_OF_COLORS => 16,
+      ColorQuantization::OPTION_BLUR_FACTOR => 2,
+      ColorQuantization::OPTION_CYCLES => 3,
+      ColorQuantization::OPTION_MINIMUM_COLOR_RATIO => 0
+    ];
+    private $_options;
+
+    private $_image;
+
+    public function __construct($image, array $options = []) {
+      $this->_image = $image;
       $this->_options = new Options(self::$_optionDefaults, $options);
     }
 
-    public function toSVG($image): \DOMDocument {
-      $group = $this->createSVG(imagesx($image), imagesy($image));
-      $document = $group->ownerDocument;
-      $this->append($image, $group);
-      return $document;
-    }
-
-    private function createSVG(int $width, int $height): \DOMElement {
-      $document = new \DOMDocument();
-      $document->appendChild(
-        $svg = $document->createElementNS(self::XMLNS_SVG, 'svg')
-      );
-      $svg->setAttribute('version', '1.1');
-      $svg->setAttribute('width', $width);
-      $svg->setAttribute('height', $height);
-      $svg->appendChild(
-        $group = $document->createElementNS(self::XMLNS_SVG, 'g')
-      );
-      $blurDeviation = $this->_options[self::OPTION_BLUR_FILTER_DEVIATION];
-      if ($blurDeviation > 0) {
-        $svg->insertBefore(
-          $filter = $document->createElementNS(self::XMLNS_SVG, 'filter'),
-          $group
-        );
-        $filter->setAttribute('id', 'b');
-        $filter->appendChild(
-          $blur = $document->createElementNS(self::XMLNS_SVG, 'feGaussianBlur')
-        );
-        $blur->setAttribute('stdDeviation', $blurDeviation);
-        $group->setAttribute('filter', 'url(#b)');
-      }
-      return $group;
-    }
-
-    protected function append($image, \DOMElement $parent): void {
-      $quantization = new ColorQuantization($image, $this->_options->asArray());
+    public function appendTo(SVG\Document $svg): void {
+      $width = imagesx($this->_image);
+      $height = imagesy($this->_image);
+      $quantization = new ColorQuantization($this->_image, $this->_options->asArray());
       $layers = $this->trace(
         $this->interpolate(
           $this->scan(
@@ -119,10 +90,12 @@ namespace Carica\BitmapToSVG\Vectorizer {
       $palette = $quantization->getPalette();
 
       $roundCoordinates = 2;
-      $scale = 1;
       $precision = 0;
       $strokeWidth = 1;
+      $scaleX = $svg->getWidth() / $width;
+      $scaleY = $svg->getHeight() / $height;
 
+      $parent = $svg->getShapesNode();
       $document = $parent->ownerDocument;
       foreach ($layers as $colorIndex => $paths) {
         /** @var Color $color */
@@ -148,19 +121,21 @@ namespace Carica\BitmapToSVG\Vectorizer {
           // Creating non-hole path string
           $segments = $path['segments'];
           if ($roundCoordinates === -1) {
-            $prepare = function($value) use ($scale) {
-              return ($value * $scale);
+            $pointToString = function(float $x, float $y) use ($scaleX, $scaleY) {
+              return ($x * $scaleX).' '.($y * $scaleY);
             };
           } else {
-            $prepare = function(float $value) use ($scale, $precision) {
-              return number_format(round($value * $scale, $precision), $precision);
+            $pointToString = function(float $x, float $y) use ($scaleX, $scaleY, $precision) {
+              return
+                number_format(round($x * $scaleX, $precision), $precision).' '.
+                number_format(round($y * $scaleY, $precision), $precision);
             };
           }
-          $dimensions = 'M '.$prepare($segments[0]['x1']).' '.$prepare($segments[0]['y1']).' ';
+          $dimensions = 'M '.$pointToString($segments[0]['x1'], $segments[0]['y1']).' ';
           foreach ($segments as $segment) {
-            $dimensions .= $segment['type'].' '.$prepare($segment['x2']).' '.$prepare($segment['y2']).' ';
+            $dimensions .= $segment['type'].' '.$pointToString($segment['x2'], $segment['y2']).' ';
             if (array_key_exists('x3', $segment)) {
-              $dimensions .= $prepare($segment['x3']).' '.$prepare($segment['y3']).' ';
+              $dimensions .= $pointToString($segment['x3'], $segment['y3']).' ';
             }
           }
           $dimensions .= 'Z';
@@ -170,16 +145,16 @@ namespace Carica\BitmapToSVG\Vectorizer {
             $lastIndex = \count($holeSegments) - 1;
 
             if (array_key_exists('x3', $holeSegments[$lastIndex])) {
-              $dimensions .= ' M '.$prepare($holeSegments[$lastIndex]['x3']).' '.$prepare($holeSegments[$lastIndex]['y3']).' ';
+              $dimensions .= ' M '.$pointToString($holeSegments[$lastIndex]['x3'], $holeSegments[$lastIndex]['y3']).' ';
             } else {
-              $dimensions .= ' M '.$prepare($holeSegments[$lastIndex]['x2']).' '.$prepare($holeSegments[$lastIndex]['y2']).' ';
+              $dimensions .= ' M '.$pointToString($holeSegments[$lastIndex]['x2'], $holeSegments[$lastIndex]['y2']).' ';
             }
             for ($index = $lastIndex; $index >= 0; $index--) {
               $dimensions .= $holeSegments[$index]['type'].' ';
               if (array_key_exists('x3', $holeSegments[$index])) {
-                $dimensions .= $prepare($holeSegments[$index]['x2']).' '.$prepare($holeSegments[$index]['y2']).' ';
+                $dimensions .= $pointToString($holeSegments[$index]['x2'], $holeSegments[$index]['y2']).' ';
               }
-              $dimensions .= $prepare($holeSegments[$index]['x1']).' '.$prepare($holeSegments[$index]['y1']).' ';
+              $dimensions .= $pointToString($holeSegments[$index]['x1'], $holeSegments[$index]['y1']).' ';
             }
             $dimensions .= 'Z';
           }
