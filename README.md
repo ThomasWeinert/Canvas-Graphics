@@ -1,0 +1,3 @@
+# BitmapToSVG
+
+An repository with experiments. Creating SVG from a Bitmap source, extracting colors, ... 
