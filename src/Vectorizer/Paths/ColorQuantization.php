@@ -19,10 +19,10 @@ namespace Carica\BitmapToSVG\Vectorizer\Paths {
     public const PALETTE_COLOR_THIEF = Color\PaletteFactory::PALETTE_COLOR_THIEF;
 
     private static $_optionDefaults = [
-      self::OPTION_PALETTE => self::PALETTE_SAMPLED,
+      self::OPTION_PALETTE => self::PALETTE_COLOR_THIEF,
       self::OPTION_NUMBER_OF_COLORS => 16,
       self::OPTION_BLUR_FACTOR => 0,
-      self::OPTION_CYCLES => 3,
+      self::OPTION_CYCLES => 1,
       self::OPTION_MINIMUM_COLOR_RATIO => 0
     ];
 
@@ -157,14 +157,9 @@ namespace Carica\BitmapToSVG\Vectorizer\Paths {
      */
     private function getClosestColorIndex(array $palette, array $pixelColor): int {
       $closestColorIndex = 0;
-      $closestDistance = PHP_INT_MAX;
+      $closestDistance = 1;
       foreach ($palette as $paletteIndex => $paletteColor) {
-        $colorDistance =
-          \abs($paletteColor['red'] - $pixelColor['red']) +
-          \abs($paletteColor['green'] - $pixelColor['green']) +
-          \abs($paletteColor['blue'] - $pixelColor['blue']) +
-          \abs($paletteColor['alpha'] - $pixelColor['alpha']);
-
+        $colorDistance = Color::computeDistance($pixelColor, $paletteColor);
         if ($colorDistance < $closestDistance) {
           $closestDistance = $colorDistance;
           $closestColorIndex = $paletteIndex;

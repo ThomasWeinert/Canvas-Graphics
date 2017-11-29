@@ -26,26 +26,23 @@ namespace Carica\BitmapToSVG\Color\Palette {
       for ($y = 0; $y < $stepsY; $y++) {
         for ($x = 0; $x < $stepsX; $x++) {
           if (\count($result) >= $numberOfColors) {
-            return $result;
+            return array_values($result);
           }
           $rgba = \imagecolorat($image, $x * $factorX, $y * $factorY);
-          $alpha = (127 - (($rgba & 0x7F000000) >> 24)) / 127 * 255;
-          if ($alpha < 125) {
-            $result[] = Color::create(
-              255,
-              255,
-              255
-            );
-          } else {
-            $result[] = Color::create(
-              ($rgba >> 16) & 0xFF,
-              ($rgba >> 8) & 0xFF,
-              $rgba & 0xFF
-            );
-          }
+          $color = Color::createFromArray(
+            Color::removeAlphaFromColor(
+              [
+                'red' => ($rgba >> 16) & 0xFF,
+                'green' => ($rgba >> 8) & 0xFF,
+                'blue' => $rgba & 0xFF,
+                'alpha' =>  (127 - (($rgba & 0x7F000000) >> 24)) / 127 * 255
+              ]
+            )
+          );
+          $result[$color->asHexString()] = $color;
         }
       }
-      return $result;
+      return array_values($result);
     }
   }
 }

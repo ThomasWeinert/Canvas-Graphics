@@ -37,6 +37,10 @@ namespace Carica\BitmapToSVG\Filter {
 
         // resize previous image to next size
         $nextImage = \imagecreatetruecolor($nextWidth, $nextHeight);
+        imagealphablending($nextImage, true);
+        $transparent = imagecolorallocatealpha( $nextImage, 0, 0, 0, 127 );
+        imagefill( $nextImage, 0, 0, $transparent );
+
         \imagecopyresized(
           $nextImage, $prevImage,
           0, 0, 0, 0,
@@ -58,6 +62,10 @@ namespace Carica\BitmapToSVG\Filter {
       }
 
       $result = \imagecreatetruecolor($originalWidth, $originalHeight);
+      imagealphablending($result, true);
+      $transparent = imagecolorallocatealpha( $result, 0, 0, 0, 127 );
+      imagefill( $result, 0, 0, $transparent );
+
       // scale back to original size and blur one more time
       \imagecopyresized(
         $result, $nextImage,

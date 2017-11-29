@@ -2,6 +2,8 @@
 
 namespace Carica\BitmapToSVG\Color {
 
+  use Carica\BitmapToSVG\Color;
+
   abstract class Palette implements \Countable, \IteratorAggregate {
 
     private $_colors;
@@ -21,6 +23,15 @@ namespace Carica\BitmapToSVG\Color {
 
     public function getIterator() {
       return new \ArrayIterator($this->asArray());
+    }
+
+    public function asHexStrings() {
+      return \array_map(
+        function(Color $color) {
+          return $color->asHexString();
+        },
+        $this->_colors
+      );
     }
   }
 }

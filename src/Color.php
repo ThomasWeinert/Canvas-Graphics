@@ -105,10 +105,10 @@ namespace Carica\BitmapToSVG {
      */
     public static function createFromArray(array $values): self {
       return new self(
-        $values['red'] ?? $values['r'] ?? 0,
-        $values['green'] ?? $values['g'] ?? 0,
-        $values['blue'] ?? $values['b'] ?? 0,
-        $values['alpha'] ?? $values['a'] ?? 255
+        $values['red'] ?? $values['r'] ?? $values[0] ?? 0,
+        $values['green'] ?? $values['g'] ?? $values[1] ?? 0,
+        $values['blue'] ?? $values['b'] ?? $values[2] ?? 0,
+        $values['alpha'] ?? $values['a'] ?? $values[3] ?? 255
       );
     }
 
@@ -286,6 +286,48 @@ namespace Carica\BitmapToSVG {
         return $m1 + ($m2 - $m1) * (2 / 3 - $hue) * 6;
       }
       return $m1;
+    }
+
+    /**
+     * @param $colorOne
+     * @param $colorTwo
+     * @param null|array $backgroundColor
+     * @return float|int
+     */
+    public static function computeDistance($colorOne, $colorTwo, $backgroundColor = NULL) {
+      $colorOne = self::removeAlphaFromColor($colorOne, $backgroundColor);
+      $colorTwo = self::removeAlphaFromColor($colorTwo, $backgroundColor);
+      $difference = 0;
+      $difference += ($colorOne['red'] - $colorTwo['red']) ** 2 * 2;
+      $difference += ($colorOne['green'] - $colorTwo['green']) ** 2 * 4;
+      $difference += ($colorOne['blue'] - $colorTwo['blue']) ** 2 * 3;
+      return sqrt($difference) / (255 * 3);
+    }
+
+    /**
+     * @param $color
+     * @param null|array|Color $backgroundColor
+     * @return array|Color
+     */
+    public static function removeAlphaFromColor($color, $backgroundColor = NULL) {
+      $backgroundColor = $backgroundColor ?? ['red' => 255, 'green' => 255, 'blue' => 255];
+      if ($color['alpha'] < 255) {
+        $factor = (float)$color['alpha'] / 255.0;
+        if ($color instanceof self) {
+          return self::create(
+            $backgroundColor['red'] * (1 - $factor) + $color['red'] * $factor,
+            $backgroundColor['green'] * (1 - $factor) + $color['green'] * $factor,
+            $backgroundColor['blue'] * (1 - $factor) + $color['blue'] * $factor
+          );
+        }
+        return [
+          'red' => $backgroundColor['red'] * (1 - $factor) + $color['red'] * $factor,
+          'green' =>  $backgroundColor['green'] * (1 - $factor) + $color['green'] * $factor,
+          'blue' => $backgroundColor['blue'] * (1 - $factor) + $color['blue'] * $factor,
+          'alpha' => 255
+        ];
+      }
+      return $color;
     }
   }
 }
