@@ -118,8 +118,8 @@ namespace Carica\BitmapToSVG\Vectorizer\Paths {
         for ($y = 0; $y < $height; $y++) {
           for ($x = 0; $x < $width; $x++) {
             $rgba = \imagecolorat($image, $x, $y);
-            if (array_key_exists($rgba, $cache)) {
-              $closestColorIndex = $cache[$rgba];
+            if (isset($cache[$rgba])) {
+              [$closestColorIndex, $pixelColor] = $cache[$rgba];
             } else {
               $pixelColor = [
                 'red' => ($rgba >> 16) & 0xFF,
@@ -128,7 +128,7 @@ namespace Carica\BitmapToSVG\Vectorizer\Paths {
                 'alpha' =>  (127 - (($rgba & 0x7F000000) >> 24)) / 127 * 255
               ];
               $closestColorIndex = $this->getClosestColorIndex($palette, $pixelColor);
-              $cache[$rgba] = $closestColorIndex;
+              $cache[$rgba] = [$closestColorIndex, $pixelColor];
             }
 
             if ($isLastIteration) {

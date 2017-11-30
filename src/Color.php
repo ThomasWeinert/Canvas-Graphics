@@ -195,7 +195,7 @@ namespace Carica\BitmapToSVG {
     }
 
     public function offsetExists($offset) {
-      return array_key_exists($offset, $this->_rgba);
+      return isset($this->_rgba[$offset]);
     }
 
     public function offsetGet($offset) {
@@ -211,7 +211,7 @@ namespace Carica\BitmapToSVG {
     }
 
     public function __isset($offset) {
-      return array_key_exists($offset, $this->_rgba);
+      return isset($this->_rgba[$offset]);
     }
 
     public function __get($offset) {

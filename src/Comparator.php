@@ -58,10 +58,15 @@ namespace Carica\BitmapToSVG {
 
     private function getPixel($image, $x, $y) {
       $rgba = \imagecolorat($image, $x, $y);
-      if (\array_key_exists($rgba, $this->_cache)) {
+      if (isset($this->_cache[$rgba])) {
         return $this->_cache[$rgba];
       }
-      return $this->_cache[$rgba] = \imagecolorsforindex($image, $rgba);
+      return $this->_cache[$rgba] = [
+        'red' => ($rgba >> 16) & 0xFF,
+        'green' => ($rgba >> 8) & 0xFF,
+        'blue' => $rgba & 0xFF,
+        'alpha' =>  (127 - (($rgba & 0x7F000000) >> 24)) / 127 * 255
+      ];
     }
 
     public function getPixelDistance($a, $b) {

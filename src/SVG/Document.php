@@ -10,7 +10,8 @@ namespace Carica\BitmapToSVG\SVG {
     public const XMLNS_SVG = Appendable::XMLNS_SVG;
 
     private $_document;
-    private $_shapesRoot;
+    private $_shapesNode;
+    private $_styleNode;
 
     private $_width;
     private $_height;
@@ -20,7 +21,7 @@ namespace Carica\BitmapToSVG\SVG {
 
     private static $_optionDefaults = [
       self::OPTION_BLUR => 0,
-      self::OPTION_FORMAT_OUTPUT => TRUE
+      self::OPTION_FORMAT_OUTPUT => FALSE
     ];
     private $_options;
 
@@ -56,9 +57,36 @@ namespace Carica\BitmapToSVG\SVG {
           $blur->setAttribute('stdDeviation', $blurDeviation);
           $group->setAttribute('filter', 'url(#b)');
         }
-        $this->_shapesRoot = $group;
+        $this->_shapesNode = $group;
       }
-      return $this->_shapesRoot;
+      return $this->_shapesNode;
+    }
+
+    public function appendStyle($selector, array $properties) {
+      if (NULL === $this->_styleNode) {
+        $document = $this->getShapesNode()->ownerDocument;
+        $document->documentElement->insertBefore(
+          $this->_styleNode = $document->createElement('style', "\n"),
+          $document->documentElement->firstChild
+        );
+        $this->_styleNode->setAttribute('type', 'text/css');
+      }
+      $lf = '';
+      $indent = '';
+      $propertyIndent = ' ';
+      if ($this->_options[self::OPTION_FORMAT_OUTPUT]) {
+        $lf = "\n";
+        $indent = '    ';
+        $propertyIndent = $indent.'  ';
+      }
+      $style = $indent.$selector.' {'.$lf;
+      foreach ($properties as $name=>$value) {
+        if (!empty($value)) {
+          $style .= $propertyIndent.$name.': '.$value.';'.$lf;
+        }
+      }
+      $style .= $indent.'}'.$lf;
+      $this->_styleNode->textContent .= $style;
     }
 
     public function getWidth() {

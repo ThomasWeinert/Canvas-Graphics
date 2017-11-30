@@ -3,6 +3,10 @@
 require __DIR__.'/../../vendor/autoload.php';
 ini_set('max_execution_time', 60);
 
+use \Carica\BitmapToSVG;
+use \Carica\BitmapToSVG\SVG;
+use \Carica\BitmapToSVG\Vectorizer;
+
 if (
   isset($_FILES['bitmap']['tmp_name']) &&
   is_uploaded_file($_FILES['bitmap']['tmp_name'])
@@ -31,13 +35,35 @@ if (
       break;
     }
     if ($image) {
-      $svg = new \Carica\BitmapToSVG\SVG\Document(
-        imagesx($image),
-        imagesy($image)
+      $start = microtime(TRUE);
+      $paths = new Vectorizer\Paths(
+        $image,
+        [
+          Vectorizer\Paths::OPTION_LINE_THRESHOLD => 1.0,
+          Vectorizer\Paths::OPTION_QUADRATIC_SPLINE_THRESHOLD => 1.0,
+          Vectorizer\Paths::OPTION_ENHANCE_RIGHT_ANGLE => FALSE,
+          Vectorizer\Paths::OPTION_MINIMUM_PATH_NODES => 8,
+          Vectorizer\Paths::OPTION_STROKE_WIDTH => 0.1,
+
+          Vectorizer\Paths\ColorQuantization::OPTION_PALETTE => BitmapToSVG\Color\PaletteFactory::PALETTE_SAMPLED,
+          Vectorizer\Paths\ColorQuantization::OPTION_NUMBER_OF_COLORS => 16,
+          Vectorizer\Paths\ColorQuantization::OPTION_BLUR_FACTOR => 1,
+          Vectorizer\Paths\ColorQuantization::OPTION_CYCLES => 3,
+          Vectorizer\Paths\ColorQuantization::OPTION_MINIMUM_COLOR_RATIO => 0
+        ]
       );
-      $svg->append(new \Carica\BitmapToSVG\Vectorizer\Paths($image));
+      $svg = new SVG\Document(
+        imagesx($image),
+        imagesy($image),
+        [
+          SVG\Document::OPTION_BLUR => 0,
+          SVG\Document::OPTION_FORMAT_OUTPUT => TRUE
+        ]
+      );
+      $svg->append($paths);
       $xml = $svg->getXML();
       file_put_contents($path.'/'.$id.'.svg', $xml);
+      $timeNeeded = microtime(TRUE) - $start;
     }
   }
 }
@@ -47,7 +73,8 @@ $values = [
   'svg_xml' => isset($svg) ? htmlspecialchars($xml) : '',
   'svg_data' => isset($svg) ? htmlspecialchars('data:image/svg+xml;base64,'.base64_encode($xml)) : '',
   'size_bitmap' => isset($bitmapFile) ? filesize($bitmapFile) : '',
-  'size_svg' => isset($bitmapFile) ? filesize($path.'/'.$id.'.svg') : ''
+  'size_svg' => isset($bitmapFile) ? filesize($path.'/'.$id.'.svg') : '',
+  'time_needed' => isset($timeNeeded) ? number_format($timeNeeded, 4) : ''
 ]
 
 ?>
@@ -77,6 +104,7 @@ $values = [
     <ul>
       <li>Bitmap: <?=$values['size_bitmap']?></li>
       <li>SVG: <?=$values['size_svg']?> </li>
+      <li>Time: <?=$values['time_needed']?>s </li>
     </ul>
     <section class="images">
       <img src="<?=$values['bitmap']?>"/>

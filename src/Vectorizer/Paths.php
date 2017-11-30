@@ -50,19 +50,20 @@ namespace Carica\BitmapToSVG\Vectorizer {
     public const OPTION_ENHANCE_RIGHT_ANGLE = 'enhance_right_angle';
     public const OPTION_LINE_THRESHOLD = 'line_threshold';
     public const OPTION_QUADRATIC_SPLINE_THRESHOLD = 'quadratic_spline_threshold';
-
-    public const OPTION_BLUR_FILTER_DEVIATION = 'blur_filter_deviation';
+    public const OPTION_COORDINATE_PRECISION = 'coordinate_precision';
+    public const OPTION_STROKE_WIDTH = 'stroke_width';
 
     private static $_optionDefaults = [
       self::OPTION_MINIMUM_PATH_NODES => 8,
       self::OPTION_ENHANCE_RIGHT_ANGLE => FALSE,
       self::OPTION_LINE_THRESHOLD => 1.0,
       self::OPTION_QUADRATIC_SPLINE_THRESHOLD => 1.0,
-      self::OPTION_BLUR_FILTER_DEVIATION => 0,
+      self::OPTION_COORDINATE_PRECISION => 2,
+      self::OPTION_STROKE_WIDTH => 0.4,
 
       ColorQuantization::OPTION_PALETTE => ColorQuantization::PALETTE_SAMPLED,
       ColorQuantization::OPTION_NUMBER_OF_COLORS => 16,
-      ColorQuantization::OPTION_BLUR_FACTOR => 2,
+      ColorQuantization::OPTION_BLUR_FACTOR => 12,
       ColorQuantization::OPTION_CYCLES => 3,
       ColorQuantization::OPTION_MINIMUM_COLOR_RATIO => 0
     ];
@@ -89,52 +90,70 @@ namespace Carica\BitmapToSVG\Vectorizer {
       );
       $palette = $quantization->getPalette();
 
-      $roundCoordinates = 2;
-      $precision = 0;
-      $strokeWidth = 1;
+      $precision = $this->_options[self::OPTION_COORDINATE_PRECISION];
+      $strokeWidth = $this->_options[self::OPTION_STROKE_WIDTH];
       $scaleX = $svg->getWidth() / $width;
       $scaleY = $svg->getHeight() / $height;
 
       $parent = $svg->getShapesNode();
       $document = $parent->ownerDocument;
+      $svg->appendStyle(
+        'path',
+        [
+          'stroke-width' => $strokeWidth
+        ]
+      );
       foreach ($layers as $colorIndex => $paths) {
         /** @var Color $color */
         $color = $palette[$colorIndex];
         $rgb = $color->asHexString();
-        $opacity = $color['alpha'] < 255 ? number_format($color['alpha'] / 255, 2) : '';
+        $opacity = $color['alpha'] < 255 ? number_format($color['alpha'] / 255, 2) : NULL;
+
+        $styleSelector = 'p'.$colorIndex;
+        $svg->appendStyle(
+          '#'.$styleSelector,
+          [
+            'fill' => $rgb,
+            'stroke' => $rgb,
+            'opacity' => $opacity,
+          ]
+        );
+
+        $groupNode = $parent;
+        if (\count($paths) > 1) {
+          /** @var \DOMElement $groupNode */
+          $groupNode = $parent->appendChild(
+            $document->createElementNS(self::XMLNS_SVG, 'g')
+          );
+          $groupNode->setAttribute('id', $styleSelector);
+        }
+
         foreach ($paths as $path) {
           if ($path['is_hole']) {
             continue;
           }
           /** @var \DOMElement $pathNode */
-          $pathNode = $parent->appendChild(
+          $pathNode = $groupNode->appendChild(
             $document->createElementNS(self::XMLNS_SVG, 'path')
           );
-          $pathNode->setAttribute('fill', $rgb);
-          $pathNode->setAttribute('stroke', $rgb);
-          if ($strokeWidth !== 1) {
-            $pathNode->setAttribute('stroke-width', $strokeWidth);
-          }
-          if ($opacity !== '') {
-            $pathNode->setAttribute('opacity', $opacity);
+          if ($groupNode === $parent) {
+            $pathNode->setAttribute('id', $styleSelector);
           }
           // Creating non-hole path string
           $segments = $path['segments'];
-          if ($roundCoordinates === -1) {
-            $pointToString = function(float $x, float $y) use ($scaleX, $scaleY) {
-              return ($x * $scaleX).' '.($y * $scaleY);
-            };
-          } else {
-            $pointToString = function(float $x, float $y) use ($scaleX, $scaleY, $precision) {
-              return
-                number_format(round($x * $scaleX, $precision), $precision).' '.
-                number_format(round($y * $scaleY, $precision), $precision);
-            };
-          }
+          $pointToString = function(float $x, float $y) use ($scaleX, $scaleY, $precision) {
+            return
+              number_format(round($x * $scaleX, $precision), $precision).' '.
+              number_format(round($y * $scaleY, $precision), $precision);
+          };
           $dimensions = 'M '.$pointToString($segments[0]['x1'], $segments[0]['y1']).' ';
-          foreach ($segments as $segment) {
+          $lastSegment = \count($segments) - 1;
+          foreach ($segments as $index => $segment) {
+            if ($index === $lastSegment && $segment['type'] === 'L') {
+              break;
+            }
             $dimensions .= $segment['type'].' '.$pointToString($segment['x2'], $segment['y2']).' ';
-            if (array_key_exists('x3', $segment)) {
+            if (isset($segment['x3'])) {
               $dimensions .= $pointToString($segment['x3'], $segment['y3']).' ';
             }
           }
@@ -144,14 +163,17 @@ namespace Carica\BitmapToSVG\Vectorizer {
             $holeSegments = $holePath['segments'];
             $lastIndex = \count($holeSegments) - 1;
 
-            if (array_key_exists('x3', $holeSegments[$lastIndex])) {
+            if (isset($holeSegments[$lastIndex]['x3'])) {
               $dimensions .= ' M '.$pointToString($holeSegments[$lastIndex]['x3'], $holeSegments[$lastIndex]['y3']).' ';
             } else {
               $dimensions .= ' M '.$pointToString($holeSegments[$lastIndex]['x2'], $holeSegments[$lastIndex]['y2']).' ';
             }
             for ($index = $lastIndex; $index >= 0; $index--) {
+              if ($index === 0 && $holeSegments[$index]['type'] === 'L') {
+                break;
+              }
               $dimensions .= $holeSegments[$index]['type'].' ';
-              if (array_key_exists('x3', $holeSegments[$index])) {
+              if (isset($holeSegments[$index]['x3'])) {
                 $dimensions .= $pointToString($holeSegments[$index]['x2'], $holeSegments[$index]['y2']).' ';
               }
               $dimensions .= $pointToString($holeSegments[$index]['x1'], $holeSegments[$index]['y1']).' ';
@@ -196,7 +218,7 @@ namespace Carica\BitmapToSVG\Vectorizer {
           $bottomRight = $matrix[$y+1][$x+1] === $colorIndex ? 1 : 0;
 
           // Create new layer if there's no one with this indexed color
-          if (!array_key_exists($colorIndex, $layers)) {
+          if (!isset($layers[$colorIndex])) {
             $layers[$colorIndex] = \array_fill(
               0, $maximumY, \array_fill(0, $maximumX, 0)
             );
