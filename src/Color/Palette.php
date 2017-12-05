@@ -1,8 +1,8 @@
 <?php
 
-namespace Carica\BitmapToSVG\Color {
+namespace Carica\CanvasGraphics\Color {
 
-  use Carica\BitmapToSVG\Color;
+  use Carica\CanvasGraphics\Color;
 
   abstract class Palette implements \Countable, \IteratorAggregate {
 

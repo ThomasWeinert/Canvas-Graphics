@@ -1,8 +1,8 @@
 <?php
 
-namespace Carica\BitmapToSVG\Color\Palette {
+namespace Carica\CanvasGraphics\Color\Palette {
 
-  use Carica\BitmapToSVG\Color;
+  use Carica\CanvasGraphics\Color;
   use ColorThief\ColorThief as ColorThiefLibrary;
 
   class ColorThief extends Color\Palette {

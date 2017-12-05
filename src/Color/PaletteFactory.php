@@ -1,6 +1,6 @@
 <?php
 
-namespace Carica\BitmapToSVG\Color {
+namespace Carica\CanvasGraphics\Color {
 
   class PaletteFactory {
 

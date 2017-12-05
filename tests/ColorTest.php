@@ -1,6 +1,6 @@
 <?php
 
-namespace Carica\BitmapToSVG {
+namespace Carica\CanvasGraphics {
 
   use PHPUnit\Framework\TestCase;
 

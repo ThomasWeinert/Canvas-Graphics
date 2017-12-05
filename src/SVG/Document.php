@@ -1,9 +1,9 @@
 <?php
 
-namespace Carica\BitmapToSVG\SVG {
+namespace Carica\CanvasGraphics\SVG {
 
 
-  use Carica\BitmapToSVG\Utility\Options;
+  use Carica\CanvasGraphics\Utility\Options;
 
   class Document {
 
@@ -72,7 +72,7 @@ namespace Carica\BitmapToSVG\SVG {
         $this->_styleNode->setAttribute('type', 'text/css');
       }
       $lf = '';
-      $indent = '';
+      $indent = ' ';
       $propertyIndent = ' ';
       if ($this->_options[self::OPTION_FORMAT_OUTPUT]) {
         $lf = "\n";

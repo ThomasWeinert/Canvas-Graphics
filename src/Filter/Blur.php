@@ -1,8 +1,10 @@
 <?php
 
-namespace Carica\BitmapToSVG\Filter {
+namespace Carica\CanvasGraphics\Filter {
 
-  class Blur {
+  use Carica\CanvasGraphics\Filter;
+
+  class Blur implements Filter {
 
     private $_factor;
 
@@ -10,7 +12,7 @@ namespace Carica\BitmapToSVG\Filter {
       $this->_factor = $blurFactor;
     }
 
-    public function apply(&$image) {
+    public function apply(&$image): void {
       if ($this->_factor < 1) {
         return;
       }

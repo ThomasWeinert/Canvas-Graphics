@@ -1,10 +1,10 @@
 <?php
 
-namespace Carica\BitmapToSVG {
+namespace Carica\CanvasGraphics {
 
   interface Filter {
 
-    public function apply(&$image);
+    public function apply(&$image): void;
   }
 }
 

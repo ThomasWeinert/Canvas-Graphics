@@ -3,9 +3,9 @@
 require __DIR__.'/../../vendor/autoload.php';
 ini_set('max_execution_time', 60);
 
-use \Carica\BitmapToSVG;
-use \Carica\BitmapToSVG\SVG;
-use \Carica\BitmapToSVG\Vectorizer;
+use \Carica\CanvasGraphics;
+use \Carica\CanvasGraphics\SVG;
+use \Carica\CanvasGraphics\Vectorizer;
 
 if (
   isset($_FILES['bitmap']['tmp_name']) &&
@@ -35,6 +35,7 @@ if (
       break;
     }
     if ($image) {
+      (new CanvasGraphics\Filter\LimitSize(200, 200))->apply($image);
       $start = microtime(TRUE);
       $paths = new Vectorizer\Paths(
         $image,
@@ -43,11 +44,12 @@ if (
           Vectorizer\Paths::OPTION_QUADRATIC_SPLINE_THRESHOLD => 1.0,
           Vectorizer\Paths::OPTION_ENHANCE_RIGHT_ANGLE => FALSE,
           Vectorizer\Paths::OPTION_MINIMUM_PATH_NODES => 8,
-          Vectorizer\Paths::OPTION_STROKE_WIDTH => 0.1,
+          Vectorizer\Paths::OPTION_COORDINATE_PRECISION => 0,
+          Vectorizer\Paths::OPTION_STROKE_WIDTH => 1,
 
-          Vectorizer\Paths\ColorQuantization::OPTION_PALETTE => BitmapToSVG\Color\PaletteFactory::PALETTE_SAMPLED,
+          Vectorizer\Paths\ColorQuantization::OPTION_PALETTE => CanvasGraphics\Color\PaletteFactory::PALETTE_COLOR_THIEF,
           Vectorizer\Paths\ColorQuantization::OPTION_NUMBER_OF_COLORS => 16,
-          Vectorizer\Paths\ColorQuantization::OPTION_BLUR_FACTOR => 1,
+          Vectorizer\Paths\ColorQuantization::OPTION_BLUR_FACTOR => 0,
           Vectorizer\Paths\ColorQuantization::OPTION_CYCLES => 3,
           Vectorizer\Paths\ColorQuantization::OPTION_MINIMUM_COLOR_RATIO => 0
         ]
@@ -57,23 +59,49 @@ if (
         imagesy($image),
         [
           SVG\Document::OPTION_BLUR => 0,
-          SVG\Document::OPTION_FORMAT_OUTPUT => TRUE
+          SVG\Document::OPTION_FORMAT_OUTPUT => FALSE
         ]
       );
       $svg->append($paths);
       $xml = $svg->getXML();
       file_put_contents($path.'/'.$id.'.svg', $xml);
       $timeNeeded = microtime(TRUE) - $start;
+
+      $sizeBitmap = filesize($bitmapFile);
+      $sizeSvg = filesize($path.'/'.$id.'.svg');
+      $sizeFactor = $sizeSvg / $sizeBitmap * 100;
     }
   }
 }
+
+function bytesToString($bytes, $decimals = 2, $decimalSeparator = '.') {
+  $exponents = [
+    'GB' => 3, 'MB' => 2, 'kB' => 1, 'B' => 0,
+  ];
+  $unit = 'B';
+  $size = $bytes;
+  foreach ($exponents as $unit => $exponent) {
+    if ($exponent > 0) {
+      $factor = 1024 ** $exponent;
+      if ($bytes > $factor) {
+        $size = $bytes / $factor;
+        break;
+      }
+    } else {
+      return round($bytes).' '.$unit;
+    }
+  }
+  return number_format($size, $decimals, $decimalSeparator, '').' '.$unit;
+}
+
 
 $values = [
   'bitmap' => isset($bitmapFile) ? htmlspecialchars('images/'.basename($bitmapFile)): '',
   'svg_xml' => isset($svg) ? htmlspecialchars($xml) : '',
   'svg_data' => isset($svg) ? htmlspecialchars('data:image/svg+xml;base64,'.base64_encode($xml)) : '',
-  'size_bitmap' => isset($bitmapFile) ? filesize($bitmapFile) : '',
-  'size_svg' => isset($bitmapFile) ? filesize($path.'/'.$id.'.svg') : '',
+  'size_bitmap' => isset($bitmapFile) ? bytesToString($sizeBitmap, 0) : '',
+  'size_svg' => isset($bitmapFile) ? bytesToString($sizeSvg) : '',
+  'size_factor' => isset($bitmapFile) ? number_format($sizeFactor) : '',
   'time_needed' => isset($timeNeeded) ? number_format($timeNeeded, 4) : ''
 ]
 
@@ -82,16 +110,39 @@ $values = [
   <head>
     <title>Upload + Convert</title>
     <style type="text/css">
+      body {
+        background-color: black;
+        color: white;
+      }
+      form {
+        text-align: center;
+      }
+      form ul {
+        list-style: none;
+        display: inline-block;
+      }
+      form ul li {
+        display: inline-block;
+      }
       .images {
         display: flex;
       }
       .images img {
-        max-width: 300px;
+        width: 300px;
         margin: auto;
+        border: 1px solid rgba(255, 255, 255, 0.5);
       }
       textarea {
         width: 100%;
         height: 600px;
+      }
+      .xml {
+        margin: 5px;
+        padding: 5px;
+        border: 1px solid black;
+        white-space: pre-wrap;
+        font-family: "Fira Code Retina", monospace;
+        font-size: 8px;
       }
     </style>
   </head>
@@ -100,16 +151,16 @@ $values = [
       <label>Bitmap file:</label>
       <input type="file" name="bitmap">
       <button type="submit">Upload</button>
+      <ul>
+        <li>Bitmap: <?=$values['size_bitmap']?></li>
+        <li>SVG: <?=$values['size_svg']?> (<?=$values['size_factor']?>%) </li>
+        <li>Time: <?=$values['time_needed']?>s </li>
+      </ul>
     </form>
-    <ul>
-      <li>Bitmap: <?=$values['size_bitmap']?></li>
-      <li>SVG: <?=$values['size_svg']?> </li>
-      <li>Time: <?=$values['time_needed']?>s </li>
-    </ul>
     <section class="images">
       <img src="<?=$values['bitmap']?>"/>
       <img src="<?=$values['svg_data']?>"/>
     </section>
-    <textarea><?=$values['svg_xml']?></textarea>
+    <section class="xml"><?=$values['svg_xml']?></section>
   </body>
 </html>

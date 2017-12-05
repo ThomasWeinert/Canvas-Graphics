@@ -1,13 +1,13 @@
 <?php
 
-namespace Carica\BitmapToSVG {
+namespace Carica\CanvasGraphics {
 
   use PHPUnit\Framework\TestCase;
 
   class ComparatorTest extends TestCase {
 
     /**
-     * @covers \Carica\BitmapToSVG\Comparator
+     * @covers \Carica\CanvasGraphics\Comparator
      */
     public function testCompareSameImageExpecting100Percent() {
       $image = imagecreatetruecolor(10, 10);
@@ -18,7 +18,7 @@ namespace Carica\BitmapToSVG {
     }
 
     /**
-     * @covers \Carica\BitmapToSVG\Comparator
+     * @covers \Carica\CanvasGraphics\Comparator
      */
     public function testCompareSameImageWithHalfAccuracyExpecting100Percent() {
       $image = imagecreatetruecolor(10, 10);
@@ -29,7 +29,7 @@ namespace Carica\BitmapToSVG {
     }
 
     /**
-     * @covers \Carica\BitmapToSVG\Comparator
+     * @covers \Carica\CanvasGraphics\Comparator
      */
     public function testCompareBlackAndWhiteImagesExpecting0Percent() {
       $imageA = imagecreatetruecolor(10, 10);
@@ -43,7 +43,7 @@ namespace Carica\BitmapToSVG {
     }
 
     /**
-     * @covers \Carica\BitmapToSVG\Comparator
+     * @covers \Carica\CanvasGraphics\Comparator
      */
     public function testCompareBlackAndHalfWhiteImagesExpecting50Percent() {
       $imageA = imagecreatetruecolor(10, 10);
@@ -57,7 +57,7 @@ namespace Carica\BitmapToSVG {
     }
 
     /**
-     * @covers \Carica\BitmapToSVG\Comparator
+     * @covers \Carica\CanvasGraphics\Comparator
      */
     public function testCompareImagesWithDifferenceSizeExpectingException() {
       $imageA = imagecreatetruecolor(10, 10);

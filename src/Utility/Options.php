@@ -1,5 +1,5 @@
 <?php
-namespace Carica\BitmapToSVG\Utility {
+namespace Carica\CanvasGraphics\Utility {
 
   class Options implements \ArrayAccess {
 

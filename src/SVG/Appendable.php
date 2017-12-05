@@ -1,6 +1,6 @@
 <?php
 
-namespace Carica\BitmapToSVG\SVG {
+namespace Carica\CanvasGraphics\SVG {
 
   interface Appendable {
 

@@ -1,11 +1,11 @@
 <?php
 
-namespace Carica\BitmapToSVG\Vectorizer {
+namespace Carica\CanvasGraphics\Vectorizer {
 
-  use Carica\BitmapToSVG\Color;
-  use Carica\BitmapToSVG\SVG;
-  use Carica\BitmapToSVG\Vectorizer\Paths\ColorQuantization;
-  use Carica\BitmapToSVG\Utility\Options;
+  use Carica\CanvasGraphics\Color;
+  use Carica\CanvasGraphics\SVG;
+  use Carica\CanvasGraphics\Vectorizer\Paths\ColorQuantization;
+  use Carica\CanvasGraphics\Utility\Options;
 
   /**
    * Vectorize an image by tracing paths
@@ -45,6 +45,9 @@ namespace Carica\BitmapToSVG\Vectorizer {
     private const DIRECTION_NORTH = 6;
     private const DIRECTION_NORTH_EAST = 7;
     private const DIRECTION_CENTER = 8;
+
+    private const SEGMENT_LINE = 'L';
+    private const SEGMENT_CURVE = 'Q';
 
     public const OPTION_MINIMUM_PATH_NODES = 'minimum_path_nodes';
     public const OPTION_ENHANCE_RIGHT_ANGLE = 'enhance_right_angle';
@@ -103,6 +106,7 @@ namespace Carica\BitmapToSVG\Vectorizer {
           'stroke-width' => $strokeWidth
         ]
       );
+      $addBackground = TRUE;
       foreach ($layers as $colorIndex => $paths) {
         /** @var Color $color */
         $color = $palette[$colorIndex];
@@ -120,7 +124,18 @@ namespace Carica\BitmapToSVG\Vectorizer {
         );
 
         $groupNode = $parent;
-        if (\count($paths) > 1) {
+        if ($addBackground) {
+          $groupNode->appendChild(
+            $rectNode = $document->createElementNS(self::XMLNS_SVG, 'rect')
+          );
+          $rectNode->setAttribute('id', $styleSelector);
+          $rectNode->setAttribute('x', 0);
+          $rectNode->setAttribute('y', 0);
+          $rectNode->setAttribute('width', number_format(round($width * $scaleX, $precision), $precision));
+          $rectNode->setAttribute('height', number_format(round($height * $scaleY, $precision), $precision));
+          $addBackground = FALSE;
+          continue;
+        } elseif (\count($paths) > 1) {
           /** @var \DOMElement $groupNode */
           $groupNode = $parent->appendChild(
             $document->createElementNS(self::XMLNS_SVG, 'g')
@@ -147,11 +162,7 @@ namespace Carica\BitmapToSVG\Vectorizer {
               number_format(round($y * $scaleY, $precision), $precision);
           };
           $dimensions = 'M '.$pointToString($segments[0]['x1'], $segments[0]['y1']).' ';
-          $lastSegment = \count($segments) - 1;
           foreach ($segments as $index => $segment) {
-            if ($index === $lastSegment && $segment['type'] === 'L') {
-              break;
-            }
             $dimensions .= $segment['type'].' '.$pointToString($segment['x2'], $segment['y2']).' ';
             if (isset($segment['x3'])) {
               $dimensions .= $pointToString($segment['x3'], $segment['y3']).' ';
@@ -159,6 +170,9 @@ namespace Carica\BitmapToSVG\Vectorizer {
           }
           $dimensions .= 'Z';
           foreach ($path['holes'] as $holePathIndex) {
+            if (!isset($paths[$holePathIndex])) {
+              continue;
+            }
             $holePath = $paths[$holePathIndex];
             $holeSegments = $holePath['segments'];
             $lastIndex = \count($holeSegments) - 1;
@@ -169,9 +183,6 @@ namespace Carica\BitmapToSVG\Vectorizer {
               $dimensions .= ' M '.$pointToString($holeSegments[$lastIndex]['x2'], $holeSegments[$lastIndex]['y2']).' ';
             }
             for ($index = $lastIndex; $index >= 0; $index--) {
-              if ($index === 0 && $holeSegments[$index]['type'] === 'L') {
-                break;
-              }
               $dimensions .= $holeSegments[$index]['type'].' ';
               if (isset($holeSegments[$index]['x3'])) {
                 $dimensions .= $pointToString($holeSegments[$index]['x2'], $holeSegments[$index]['y2']).' ';
@@ -260,7 +271,7 @@ namespace Carica\BitmapToSVG\Vectorizer {
     }
 
     private function scanLayer(array $layer, int $minimumPathNodes = 8): array {
-      $minimumPathNodes = $minimumPathNodes ?: 8;
+      $minimumPathNodes = $minimumPathNodes > 4 ? $minimumPathNodes : 4;
       $paths = [];
       $height = \count($layer);
       $width = \count($layer[0]);
@@ -465,7 +476,9 @@ namespace Carica\BitmapToSVG\Vectorizer {
     private function tracePaths(array $paths, float $lineThreshold, float $splineThreshold): array {
       $result = [];
       foreach ($paths as $path) {
-        $result[] = $this->tracePath($path, $lineThreshold, $splineThreshold);
+        if ($path = $this->tracePath($path, $lineThreshold, $splineThreshold)) {
+          $result[] = $path;
+        }
       }
       return $result;
     }
@@ -485,7 +498,7 @@ namespace Carica\BitmapToSVG\Vectorizer {
      * @param float $splineThreshold
      * @return array
      */
-    private function tracePath(array $path, float $lineThreshold, float $splineThreshold): array {
+    private function tracePath(array $path, float $lineThreshold, float $splineThreshold): ?array {
       $tracedPath = [
         'segments' => [],
         'box' => $path['box'],
@@ -525,7 +538,36 @@ namespace Carica\BitmapToSVG\Vectorizer {
         );
         $offset = ($sequenceEnd > 0) ? $sequenceEnd : $length;
       }
-      return $tracedPath;
+      return $this->optimizePath($tracedPath);
+    }
+
+    private function optimizePath($path) {
+      $segmentCount = \count($path['segments']);
+      if ($segmentCount < 2) {
+        return NULL;
+      }
+      $lastSegment = $path['segments'][$segmentCount-1];
+      if ($lastSegment['type'] === self::SEGMENT_LINE) {
+        // if the last segment is a straight line, remove it (closing the path will be enough)
+        array_pop($path['segments']);
+      }
+      $typeCount = \array_reduce(
+        $path['segments'],
+        function ($carry, $segment) {
+          $carry[$segment['type']]++;
+          return $carry;
+        },
+        [self::SEGMENT_LINE => 0, self::SEGMENT_CURVE => 0]
+      );
+      if (
+        // at least 3 segments (triangle)
+        $segmentCount > 2 ||
+        // or two curves
+        ($typeCount[self::SEGMENT_CURVE] > 1)
+      ) {
+        return $path;
+      }
+      return NULL;
     }
 
     private function fitSequence(array $points, int $start, int $end, float $lineThreshold, float $splineThreshold): array {
@@ -573,7 +615,7 @@ namespace Carica\BitmapToSVG\Vectorizer {
 		  if ($curvePass) {
         return [
           [
-            'type' => 'L',
+            'type' => self::SEGMENT_LINE,
             'x1' => $points[$start]['x'],
             'y1' => $points[$start]['y'],
             'x2' => $points[$end]['x'],
@@ -622,7 +664,7 @@ namespace Carica\BitmapToSVG\Vectorizer {
       if ($curvePass) {
         return [
           [
-            'type' => 'Q',
+            'type' => self::SEGMENT_CURVE,
             'x1' => $points[$start]['x'],
             'y1' => $points[$start]['y'],
             'x2' => $cpx,

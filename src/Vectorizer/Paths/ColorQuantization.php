@@ -1,10 +1,10 @@
 <?php
 
-namespace Carica\BitmapToSVG\Vectorizer\Paths {
+namespace Carica\CanvasGraphics\Vectorizer\Paths {
 
-  use Carica\BitmapToSVG\Color;
-  use Carica\BitmapToSVG\Filter\Blur;
-  use Carica\BitmapToSVG\Utility\Options;
+  use Carica\CanvasGraphics\Color;
+  use Carica\CanvasGraphics\Filter\Blur;
+  use Carica\CanvasGraphics\Utility\Options;
 
   class ColorQuantization {
 
@@ -146,6 +146,27 @@ namespace Carica\BitmapToSVG\Vectorizer\Paths {
         }
       }
       return $result;
+    }
+
+    private function getImageData($image, $width, $height) {
+      $cache = [];
+      $pixels = [];
+      for ($x=0;$x <$width; $x++) {
+        for ($y=0;$y <$height; $y++) {
+          $rgba = imagecolorat($image, $x, $y);
+          if (isset($cache[$rgba])) {
+            $colors[] = $cache[$rgba];
+          } else {
+            $colors[] = $cache[$rgba] = [
+              'red' => ($rgba >> 16) & 0xFF,
+              'green' => ($rgba >> 8) & 0xFF,
+              'blue' => $rgba & 0xFF,
+              'alpha' => (127 - (($rgba & 0x7F000000) >> 24)) / 127 * 255
+            ];
+          }
+        }
+      }
+      return $colors;
     }
 
     /**
