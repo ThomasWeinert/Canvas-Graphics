@@ -47,7 +47,7 @@ namespace Carica\CanvasGraphics {
       );
     }
 
-    public function asHexString($withAlpha = FALSE) {
+    public function toHexString($withAlpha = FALSE) {
       if ($withAlpha) {
         return sprintf(
           '#%02x%02x%02x%02x',
@@ -305,7 +305,7 @@ namespace Carica\CanvasGraphics {
     }
 
     /**
-     * @param $color
+     * @param array|Color $color
      * @param null|array|Color $backgroundColor
      * @return array|Color
      */
@@ -313,19 +313,13 @@ namespace Carica\CanvasGraphics {
       $backgroundColor = $backgroundColor ?? ['red' => 255, 'green' => 255, 'blue' => 255];
       if ($color['alpha'] < 255) {
         $factor = (float)$color['alpha'] / 255.0;
+        $red = $backgroundColor['red'] * (1 - $factor) + $color['red'] * $factor;
+        $green = $backgroundColor['green'] * (1 - $factor) + $color['green'] * $factor;
+        $blue = $backgroundColor['blue'] * (1 - $factor) + $color['blue'] * $factor;
         if ($color instanceof self) {
-          return self::create(
-            $backgroundColor['red'] * (1 - $factor) + $color['red'] * $factor,
-            $backgroundColor['green'] * (1 - $factor) + $color['green'] * $factor,
-            $backgroundColor['blue'] * (1 - $factor) + $color['blue'] * $factor
-          );
+          return self::create($red, $green, $blue);
         }
-        return [
-          'red' => $backgroundColor['red'] * (1 - $factor) + $color['red'] * $factor,
-          'green' =>  $backgroundColor['green'] * (1 - $factor) + $color['green'] * $factor,
-          'blue' => $backgroundColor['blue'] * (1 - $factor) + $color['blue'] * $factor,
-          'alpha' => 255
-        ];
+        return ['red' => $red, 'green' =>  $green, 'blue' => $blue, 'alpha' => 255];
       }
       return $color;
     }

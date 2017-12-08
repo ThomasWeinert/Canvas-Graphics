@@ -8,7 +8,7 @@ namespace Carica\CanvasGraphics {
 
     public function testConstructor() {
       $color = new Color(1, 2, 3, 4);
-      $this->assertEquals('#01020304', $color->asHexString(TRUE));
+      $this->assertEquals('#01020304', $color->toHexString(TRUE));
     }
 
     /**
@@ -39,7 +39,7 @@ namespace Carica\CanvasGraphics {
      */
     public function testRemoveAlphaFromColor($expected, $color, $background = NULL) {
       $color = Color::removeAlphaFromColor(Color::createFromArray($color), $background);
-      $this->assertEquals($expected, $color->asHexString());
+      $this->assertEquals($expected, $color->toHexString());
     }
 
     public static function provideColorsForMerging() {

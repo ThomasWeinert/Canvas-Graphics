@@ -18,11 +18,12 @@ namespace Carica\CanvasGraphics\Utility {
     }
 
     public function offsetSet($offset, $value): void {
-      if (
-        \array_key_exists($offset, $this->_values) &&
-        \settype($value, \gettype($this->_values[$offset]))
-      ) {
-        $this->_values[$offset] = $value;
+      if (\array_key_exists($offset, $this->_defaults)) {
+        if (NULL === $this->_defaults[$offset]) {
+          $this->_values[$offset] = $value;
+        } elseif (\settype($value, \gettype($this->_defaults[$offset]))) {
+          $this->_values[$offset] = $value;
+        }
       }
     }
 
