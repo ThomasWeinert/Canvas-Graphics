@@ -3,25 +3,27 @@
 namespace Carica\CanvasGraphics {
 
 
+  use Carica\CanvasGraphics\Canvas\ImageData;
+
   class Comparator {
 
     private $_cache = [];
 
     /**
-     * @param resource $imageA
-     * @param resource $imageB
+     * @param ImageData $imageA
+     * @param ImageData $imageB
      * @param float $accuracy percentage of pixels sampled between 0.2 (20%) and 1 (all pixels)
      * @return float Score between 0 (not equal) and 1 (equal)
      * @throws \LogicException
      */
-    public function getScore($imageA, $imageB, float $accuracy = 1): float {
-      $imageWidth = imagesx($imageA);
-      $imageHeight = imagesy($imageA);
-      if ($imageWidth !== imagesx($imageB) || $imageHeight !== imagesy($imageB)) {
+    public function getScore(ImageData $imageA, ImageData $imageB, float $accuracy = 1): float {
+      $imageWidth = $imageA->width;
+      $imageHeight = $imageA->height;
+      if ($imageWidth !== $imageB->width || $imageHeight !== $imageB->height) {
         throw new \LogicException('Booth images need to have the same size.');
       }
 
-      $accuracy = Utility::clampNumber($accuracy, 0.2, 1);
+      $accuracy = \max(0.2, \min($accuracy, 1));
       if ($accuracy > 0.99) {
         $allPixels = TRUE;
         $xSamples = $imageWidth;
@@ -41,39 +43,30 @@ namespace Carica\CanvasGraphics {
       for ($y = 0; $y < $imageHeight; $y += $yPixelsPerSample) {
         for ($x = 0; $x < $imageWidth; $x += $xPixelsPerSample) {
           if ($allPixels) {
-            $pixelX = $x;
-            $pixelY = $y;
+            $index = ($y * $imageWidth + $x) * 4;
           } else {
-            $pixelX = floor($x);
-            $pixelY = floor($y);
+            $index = (\floor($y) * $imageWidth + floor($x)) * 4;
           }
           $difference += $this->getPixelDistance(
-            $this->getPixel($imageA, $pixelX, $pixelY),
-            $this->getPixel($imageB, $pixelX, $pixelY)
+            $this->getPixel($imageA->data, $index),
+            $this->getPixel($imageB->data, $index)
           );
         }
       }
       return 1 - ($difference / ($xSamples * $ySamples));
     }
 
-    private function getPixel($image, $x, $y) {
-      $rgba = \imagecolorat($image, $x, $y);
-      if (isset($this->_cache[$rgba])) {
-        return $this->_cache[$rgba];
-      }
-      return $this->_cache[$rgba] = [
-        'red' => ($rgba >> 16) & 0xFF,
-        'green' => ($rgba >> 8) & 0xFF,
-        'blue' => $rgba & 0xFF,
-        'alpha' =>  (127 - (($rgba & 0x7F000000) >> 24)) / 127 * 255
+    private function getPixel(array $data, $index): array {
+      return [
+        $data[$index], $data[$index + 1], $data[$index + 2], $data[$index + 3]
       ];
     }
 
     public function getPixelDistance($a, $b) {
       return (
-        \abs($a['red'] - $b['red']) +
-        \abs($a['green'] - $b['green']) +
-        \abs($a['blue'] - $b['blue'])
+        \abs($a[0] - $b[0]) +
+        \abs($a[1] - $b[1]) +
+        \abs($a[2] - $b[2])
       ) / (255 * 3);
     }
   }
