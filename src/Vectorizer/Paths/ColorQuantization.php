@@ -2,45 +2,49 @@
 
 namespace Carica\CanvasGraphics\Vectorizer\Paths {
 
+  use Carica\CanvasGraphics\Canvas\ImageData;
   use Carica\CanvasGraphics\Color;
-  use Carica\CanvasGraphics\Filter\Blur;
   use Carica\CanvasGraphics\Utility\Options;
 
   class ColorQuantization {
 
     public const OPTION_PALETTE = 'palette';
     public const OPTION_NUMBER_OF_COLORS = 'number_of_colors';
-    public const OPTION_BLUR_FACTOR = 'blur_factor';
+    public const OPTION_BACKGROUND_COLOR = 'background_color';
     public const OPTION_CYCLES = 'cycles';
     public const OPTION_MINIMUM_COLOR_RATIO = 'minimum_color_ratio';
 
-    public const PALETTE_GENERATED = Color\PaletteFactory::PALETTE_GENERATED;
-    public const PALETTE_SAMPLED = Color\PaletteFactory::PALETTE_SAMPLED;
-    public const PALETTE_COLOR_THIEF = Color\PaletteFactory::PALETTE_COLOR_THIEF;
-
     private static $_optionDefaults = [
-      self::OPTION_PALETTE => self::PALETTE_COLOR_THIEF,
+      self::OPTION_PALETTE => Color\PaletteFactory::PALETTE_COLOR_THIEF,
       self::OPTION_NUMBER_OF_COLORS => 16,
-      self::OPTION_BLUR_FACTOR => 0,
+      self::OPTION_BACKGROUND_COLOR => NULL,
       self::OPTION_CYCLES => 1,
       self::OPTION_MINIMUM_COLOR_RATIO => 0
     ];
 
-    private $_image;
+    /**
+     * @var ImageData
+     */
+    private $_imageData;
+    /**
+     * @var Options
+     */
     private $_options;
+    /**
+     * @var array
+     */
     private $_palette;
 
     /**
      * ColorQuantization constructor.
      *
-     * @param $image
+     * @param ImageData $imageData
      * @param array $options
      * @param array|Color\Palette $palette
      */
-    public function __construct($image, array $options = [], $palette = NULL) {
-      $this->_image = $image;
+    public function __construct(ImageData $imageData, array $options = [], $palette = NULL) {
+      $this->_imageData = $imageData;
       $this->_options = new Options(self::$_optionDefaults, $options);
-
     }
 
     public function setPalette($palette): void {
@@ -59,31 +63,30 @@ namespace Carica\CanvasGraphics\Vectorizer\Paths {
     public function getPalette(): array {
       if (!\is_array($this->_palette)) {
         if ($this->_palette instanceof Color\Palette) {
-          $this->_palette = $this->_palette->asArray();
+          $this->_palette = $this->_palette->toArray();
         } else {
           $this->_palette = Color\PaletteFactory::createPalette(
             $this->_options[self::OPTION_PALETTE],
-            $this->_image,
-            $this->_options[self::OPTION_NUMBER_OF_COLORS]
-          )->asArray();
+            $this->_imageData,
+            $this->_options[self::OPTION_NUMBER_OF_COLORS],
+            $this->_options[self::OPTION_BACKGROUND_COLOR]
+          )->toArray();
         }
       }
       return $this->_palette;
     }
 
     public function getMatrix(): array {
-      $width = \imagesx($this->_image);
-      $height = \imagesy($this->_image);
+      $imageData = $this->_imageData;
+      $width = $imageData->width;
+      $height = $imageData->height;
       $pixelCount = $width * $height;
       $result = \array_fill(
         0,
         $height + 2,
         \array_fill(0, $width + 2, -1)
       );
-
       $palette = $this->getPalette();
-      $image = $this->_image;
-      (new Blur($this->_options[self::OPTION_BLUR_FACTOR]))->apply($image);
 
       $accumulator = [];
       $numberOfCycles = $this->_options[self::OPTION_CYCLES] > 0 ? $this->_options[self::OPTION_CYCLES] : 1;
@@ -117,16 +120,21 @@ namespace Carica\CanvasGraphics\Vectorizer\Paths {
         $cache = [];
         for ($y = 0; $y < $height; $y++) {
           for ($x = 0; $x < $width; $x++) {
-            $rgba = \imagecolorat($image, $x, $y);
+            $index = ($y * $width + $x) * 4;
+            $pixelColor = [
+              'red' => $imageData->data[$index],
+              'green' => $imageData->data[$index + 1],
+              'blue' => $imageData->data[$index + 2],
+              'alpha' => $imageData->data[$index + 3]
+            ];
+            $rgba =
+              ($pixelColor['red'] << 24) +
+              ($pixelColor['green'] << 16) +
+              ($pixelColor['blue'] << 8) +
+              $pixelColor['alpha'];
             if (isset($cache[$rgba])) {
               [$closestColorIndex, $pixelColor] = $cache[$rgba];
             } else {
-              $pixelColor = [
-                'red' => ($rgba >> 16) & 0xFF,
-                'green' => ($rgba >> 8) & 0xFF,
-                'blue' => $rgba & 0xFF,
-                'alpha' =>  (127 - (($rgba & 0x7F000000) >> 24)) / 127 * 255
-              ];
               $closestColorIndex = $this->getClosestColorIndex($palette, $pixelColor);
               $cache[$rgba] = [$closestColorIndex, $pixelColor];
             }
@@ -136,37 +144,26 @@ namespace Carica\CanvasGraphics\Vectorizer\Paths {
               $result[$y + 1][$x + 1] = $closestColorIndex;
             } else {
               // accumulate color values for averaging
-              $accumulator[$closestColorIndex]['r'] += $pixelColor['red'];
-              $accumulator[$closestColorIndex]['g'] += $pixelColor['green'];
-              $accumulator[$closestColorIndex]['b'] += $pixelColor['blue'];
-              $accumulator[$closestColorIndex]['a'] += $pixelColor['alpha'];
-              $accumulator[$closestColorIndex]['n']++;
+              if (isset($accumulator[$closestColorIndex])) {
+                $accumulator[$closestColorIndex]['r'] += $pixelColor['red'];
+                $accumulator[$closestColorIndex]['g'] += $pixelColor['green'];
+                $accumulator[$closestColorIndex]['b'] += $pixelColor['blue'];
+                $accumulator[$closestColorIndex]['a'] += $pixelColor['alpha'];
+                $accumulator[$closestColorIndex]['n']++;
+              } else {
+                $accumulator[$closestColorIndex] = [
+                  'r' => $pixelColor['red'],
+                  'g' => $pixelColor['green'],
+                  'b' => $pixelColor['blue'],
+                  'a' => $pixelColor['alpha'],
+                  'n' => 1
+                ];
+              }
             }
           }
         }
       }
       return $result;
-    }
-
-    private function getImageData($image, $width, $height) {
-      $cache = [];
-      $pixels = [];
-      for ($x=0;$x <$width; $x++) {
-        for ($y=0;$y <$height; $y++) {
-          $rgba = imagecolorat($image, $x, $y);
-          if (isset($cache[$rgba])) {
-            $colors[] = $cache[$rgba];
-          } else {
-            $colors[] = $cache[$rgba] = [
-              'red' => ($rgba >> 16) & 0xFF,
-              'green' => ($rgba >> 8) & 0xFF,
-              'blue' => $rgba & 0xFF,
-              'alpha' => (127 - (($rgba & 0x7F000000) >> 24)) / 127 * 255
-            ];
-          }
-        }
-      }
-      return $colors;
     }
 
     /**

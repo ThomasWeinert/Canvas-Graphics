@@ -2,6 +2,7 @@
 
 namespace Carica\CanvasGraphics\Vectorizer {
 
+  use Carica\CanvasGraphics\Canvas\ImageData;
   use Carica\CanvasGraphics\Color;
   use Carica\CanvasGraphics\SVG;
   use Carica\CanvasGraphics\Vectorizer\Paths\ColorQuantization;
@@ -64,25 +65,28 @@ namespace Carica\CanvasGraphics\Vectorizer {
       self::OPTION_COORDINATE_PRECISION => 2,
       self::OPTION_STROKE_WIDTH => 0.4,
 
-      ColorQuantization::OPTION_PALETTE => ColorQuantization::PALETTE_SAMPLED,
+      ColorQuantization::OPTION_PALETTE => Color\PaletteFactory::PALETTE_SAMPLED,
       ColorQuantization::OPTION_NUMBER_OF_COLORS => 16,
-      ColorQuantization::OPTION_BLUR_FACTOR => 12,
+      ColorQuantization::OPTION_BACKGROUND_COLOR => NULL,
       ColorQuantization::OPTION_CYCLES => 3,
       ColorQuantization::OPTION_MINIMUM_COLOR_RATIO => 0
     ];
     private $_options;
 
-    private $_image;
+    /**
+     * @var ImageData
+     */
+    private $_imageData;
 
-    public function __construct($image, array $options = []) {
-      $this->_image = $image;
+    public function __construct(ImageData $imageData, array $options = []) {
+      $this->_imageData = $imageData;
       $this->_options = new Options(self::$_optionDefaults, $options);
     }
 
     public function appendTo(SVG\Document $svg): void {
-      $width = imagesx($this->_image);
-      $height = imagesy($this->_image);
-      $quantization = new ColorQuantization($this->_image, $this->_options->asArray());
+      $width = $this->_imageData->width;
+      $height = $this->_imageData->height;
+      $quantization = new ColorQuantization($this->_imageData, $this->_options->asArray());
       $layers = $this->trace(
         $this->interpolate(
           $this->scan(
@@ -110,7 +114,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
       foreach ($layers as $colorIndex => $paths) {
         /** @var Color $color */
         $color = $palette[$colorIndex];
-        $rgb = $color->asHexString();
+        $rgb = $color->toHexString();
         $opacity = $color['alpha'] < 255 ? number_format($color['alpha'] / 255, 2) : NULL;
 
         $styleSelector = 'p'.$colorIndex;
@@ -249,7 +253,6 @@ namespace Carica\CanvasGraphics\Vectorizer {
           }
         }
       }
-
       return $layers;
     }
 

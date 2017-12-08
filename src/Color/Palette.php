@@ -10,7 +10,7 @@ namespace Carica\CanvasGraphics\Color {
 
     abstract public function generate(): array;
 
-    public function asArray(): array {
+    public function toArray(): array {
       if (NULL === $this->_colors) {
         $this->_colors = $this->generate();
       }
@@ -18,17 +18,17 @@ namespace Carica\CanvasGraphics\Color {
     }
 
     public function count() {
-      return \count($this->asArray());
+      return \count($this->toArray());
     }
 
     public function getIterator() {
-      return new \ArrayIterator($this->asArray());
+      return new \ArrayIterator($this->toArray());
     }
 
-    public function asHexStrings() {
+    public function toHexStrings() {
       return \array_map(
         function(Color $color) {
-          return $color->asHexString();
+          return $color->toHexString();
         },
         $this->_colors
       );
