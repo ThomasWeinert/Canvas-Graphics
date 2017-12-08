@@ -1,22 +1,14 @@
 <?php
 
-namespace Carica\CanvasGraphics\Canvas\Context2D {
+namespace Carica\CanvasGraphics\Canvas\GD {
 
   use PHPUnit\Framework\TestCase;
 
-  class GDContextTest extends TestCase {
-
-    private $_image;
-
-    public function tearDown() {
-      if (NULL !== $this->_image) {
-        \imagedestroy($this->_image);
-      }
-    }
+  class CanvasContextTest extends TestCase {
 
     public function testCreateImageData() {
       $this->_image = $image = \imagecreatetruecolor(1,1);
-      $context = new GDCanvasContext($image);
+      $context = new CanvasContext($image);
       $imageData = $context->createImageData(3, 3);
       $this->assertSame(
         [
@@ -43,7 +35,7 @@ namespace Carica\CanvasGraphics\Canvas\Context2D {
       \imagesetpixel($image, 0, 1, \imagecolorallocate($image, 0, 255, 0));
       \imagesetpixel($image, 1, 1, \imagecolorallocate($image, 0, 0, 255));
 
-      $context = new GDCanvasContext($image);
+      $context = new CanvasContext($image);
       $imageData = $context->getImageData();
       $this->assertSame(
         [

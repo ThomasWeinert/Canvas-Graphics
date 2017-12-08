@@ -3,8 +3,5 @@
     "psr-4" : {
       "Carica\\CanvasGraphics\\" : "src/"
     }
-  },
-  "require": {
-    "ksubileau/color-thief-php": "^1.3"
   }
 }

@@ -1,8 +1,8 @@
 <?php
 
-namespace Carica\CanvasGraphics\Filter {
+namespace Carica\CanvasGraphics\Canvas\GD\Filter {
 
-  use Carica\CanvasGraphics\Filter;
+  use Carica\CanvasGraphics\Canvas\GD\Filter;
 
   class Blur implements Filter {
 
@@ -12,7 +12,7 @@ namespace Carica\CanvasGraphics\Filter {
       $this->_factor = $blurFactor;
     }
 
-    public function apply(&$image): void {
+    public function applyTo(&$image): void {
       if ($this->_factor < 1) {
         return;
       }

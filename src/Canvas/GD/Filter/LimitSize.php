@@ -1,8 +1,8 @@
 <?php
 
-namespace Carica\CanvasGraphics\Filter {
+namespace Carica\CanvasGraphics\Canvas\GD\Filter {
 
-  use Carica\CanvasGraphics\Filter;
+  use Carica\CanvasGraphics\Canvas\GD\Filter;
 
   class LimitSize implements Filter {
 
@@ -14,7 +14,7 @@ namespace Carica\CanvasGraphics\Filter {
       $this->_height = max($height, 1);
     }
 
-    public function apply(&$image): void {
+    public function applyTo(&$image): void {
       $originalWidth = imagesx($image);
       $originalHeight = imagesy($image);
       if ($originalWidth <= $this->_width && $originalHeight <=$this->_height) {

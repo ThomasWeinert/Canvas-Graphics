@@ -25,20 +25,17 @@ if (
     move_uploaded_file($_FILES['bitmap']['tmp_name'], $bitmapFile)
   ) {
     // start converting
-    $image = FALSE;
-    switch ($bitmapType) {
-    case IMAGETYPE_JPEG :
-      $image = imagecreatefromjpeg($bitmapFile);
-      break;
-    case IMAGETYPE_PNG :
-      $image = imagecreatefrompng($bitmapFile);
-      break;
-    }
+    $image = CanvasGraphics\Canvas\GD\Image::load($bitmapFile);
     if ($image) {
-      (new CanvasGraphics\Filter\LimitSize(200, 200))->apply($image);
+      $image->filter(
+        new CanvasGraphics\Canvas\GD\Filter\LimitSize(200, 200),
+        new CanvasGraphics\Canvas\GD\Filter\Blur(4)
+      );
+      $context = $image->getContext('2d');
+      $imageData = $context->getImageData();
       $start = microtime(TRUE);
       $paths = new Vectorizer\Paths(
-        $image,
+        $imageData,
         [
           Vectorizer\Paths::OPTION_LINE_THRESHOLD => 1.0,
           Vectorizer\Paths::OPTION_QUADRATIC_SPLINE_THRESHOLD => 1.0,
@@ -49,14 +46,13 @@ if (
 
           Vectorizer\Paths\ColorQuantization::OPTION_PALETTE => CanvasGraphics\Color\PaletteFactory::PALETTE_COLOR_THIEF,
           Vectorizer\Paths\ColorQuantization::OPTION_NUMBER_OF_COLORS => 16,
-          Vectorizer\Paths\ColorQuantization::OPTION_BLUR_FACTOR => 0,
-          Vectorizer\Paths\ColorQuantization::OPTION_CYCLES => 3,
+          Vectorizer\Paths\ColorQuantization::OPTION_CYCLES => 1,
           Vectorizer\Paths\ColorQuantization::OPTION_MINIMUM_COLOR_RATIO => 0
         ]
       );
       $svg = new SVG\Document(
-        imagesx($image),
-        imagesy($image),
+        $imageData->width,
+        $imageData->height,
         [
           SVG\Document::OPTION_BLUR => 0,
           SVG\Document::OPTION_FORMAT_OUTPUT => FALSE

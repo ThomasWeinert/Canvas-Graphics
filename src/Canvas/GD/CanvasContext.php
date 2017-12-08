@@ -1,6 +1,6 @@
 <?php
 
-namespace Carica\CanvasGraphics\Canvas\Context2D {
+namespace Carica\CanvasGraphics\Canvas\GD {
 
   use Carica\CanvasGraphics\Canvas\CanvasContext2D;
   use Carica\CanvasGraphics\Canvas\ImageData;
@@ -10,7 +10,7 @@ namespace Carica\CanvasGraphics\Canvas\Context2D {
    * Class GDContext
    *
    */
-  class GDCanvasContext implements CanvasContext2D {
+  class CanvasContext implements CanvasContext2D {
 
     private $_imageResource;
 
@@ -45,9 +45,8 @@ namespace Carica\CanvasGraphics\Canvas\Context2D {
       self::MOVE_VERTICAL => 0
     ];
 
-    public function __construct(int $width, int $height) {
-      $this->_imageResource = \imagecreatetruecolor($width, $height);
-      $this->clearRect(0, 0, $width, $height);
+    public function __construct($imageResource) {
+      $this->_imageResource = $imageResource;
     }
 
     public function __destruct() {
@@ -86,21 +85,26 @@ namespace Carica\CanvasGraphics\Canvas\Context2D {
     }
 
     public function toBlob(string $type = 'image/png', float $encoderOptions = NULL) {
+      ob_start();
+      $done = FALSE;
       switch($type) {
       case 'image/png' :
-        return \imagepng(
+        $done = \imagepng(
           $this->_imageResource,
           NULL,
           (NULL !== $encoderOptions && $encoderOptions >= 0 && $encoderOptions <= 1)
             ? round($encoderOptions * 10) : 0
         );
       case 'image/jpeg' :
-        return \imagejpeg(
+        $done =  \imagejpeg(
           $this->_imageResource,
           NULL,
           (NULL !== $encoderOptions && $encoderOptions >= 0 && $encoderOptions <= 1)
             ? round($encoderOptions * 100) : 80
         );
+      }
+      if ($done) {
+        return ob_get_clean();
       }
       throw new \InvalidArgumentException(sprintf('%s is not supported as a target format.', $type));
     }
@@ -121,8 +125,8 @@ namespace Carica\CanvasGraphics\Canvas\Context2D {
         $data = [];
         $width = \imagesx($this->_imageResource);
         $height = \imagesy($this->_imageResource);
-        for ($y = 0; $y <$height; $y++) {
-          for ($x = 0; $x <$width; $x++) {
+        for ($y = 0; $y < $height; $y++) {
+          for ($x = 0; $x < $width; $x++) {
             $rgba = \imagecolorat($this->_imageResource, $x, $y);
             if (isset($cache[$rgba])) {
               $pixel = $cache[$rgba];
@@ -292,6 +296,7 @@ namespace Carica\CanvasGraphics\Canvas\Context2D {
           $sourceWidth,
           $sourceHeight
         );
+        $this->_imageData = NULL;
       }
     }
 
