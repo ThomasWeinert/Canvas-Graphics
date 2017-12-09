@@ -118,6 +118,17 @@ namespace Carica\CanvasGraphics\Vectorizer {
         ]
       );
       $addBackground = TRUE;
+      uasort(
+        $layers,
+        function (array $layerA, array $layerB) {
+          $countA = \count($layerA);
+          $countB = \count($layerB);
+          if ($countA !== $countB) {
+            return $countA > $countB ? -1 : 1;
+          }
+          return 0;
+        }
+      );
       foreach ($layers as $colorIndex => $paths) {
         $color = $palette[$colorIndex];
         $rgb = $color->toHexString();
