@@ -1,6 +1,6 @@
 <?php
 
-namespace Carica\CanvasGraphics {
+namespace Carica\CanvasGraphics\Canvas\ImageData {
 
   use Carica\CanvasGraphics\Canvas\GD\CanvasContext;
   use PHPUnit\Framework\TestCase;
