@@ -29,12 +29,14 @@ namespace Carica\CanvasGraphics\Color\Palette {
         for ($r = 0; $r < $numberOfEdgeColors; $r++) {
           for ($g = 0; $g < $numberOfEdgeColors; $g++) {
             for ($b = 0; $b < $numberOfEdgeColors; $b++) {
-              $result[] = Color::create($r * $steps, $g * $steps, $b * $steps);
+              $color = Color::create($r * $steps, $g * $steps, $b * $steps);
+              $result[$color->toInt()] = $color;
             }
           }
         }
         for ($i = 0; $i < $numberOfRandomColors; $i++) {
-          $result[] = Color::createRandom(255);
+          $color = Color::createRandom(255);
+          $result[$color->toInt()] = $color;
         }
       }
       return $result;

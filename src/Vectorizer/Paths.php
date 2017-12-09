@@ -63,14 +63,11 @@ namespace Carica\CanvasGraphics\Vectorizer {
       self::OPTION_LINE_THRESHOLD => 1.0,
       self::OPTION_QUADRATIC_SPLINE_THRESHOLD => 1.0,
       self::OPTION_COORDINATE_PRECISION => 2,
-      self::OPTION_STROKE_WIDTH => 0.4,
-
-      ColorQuantization::OPTION_PALETTE => Color\PaletteFactory::PALETTE_SAMPLED,
-      ColorQuantization::OPTION_NUMBER_OF_COLORS => 16,
-      ColorQuantization::OPTION_BACKGROUND_COLOR => NULL,
-      ColorQuantization::OPTION_CYCLES => 3,
-      ColorQuantization::OPTION_MINIMUM_COLOR_RATIO => 0
+      self::OPTION_STROKE_WIDTH => 0.4
     ];
+    /**
+     * @var Options
+     */
     private $_options;
 
     /**
@@ -78,24 +75,34 @@ namespace Carica\CanvasGraphics\Vectorizer {
      */
     private $_imageData;
 
-    public function __construct(ImageData $imageData, array $options = []) {
+    /**
+     * @var Color\Palette
+     */
+    private $_palette;
+
+    public function __construct(
+      ImageData $imageData, Color\Palette $palette, array $options = []
+    ) {
       $this->_imageData = $imageData;
+      $this->_palette = $palette;
       $this->_options = new Options(self::$_optionDefaults, $options);
     }
 
     public function appendTo(SVG\Document $svg): void {
       $width = $this->_imageData->width;
       $height = $this->_imageData->height;
-      $quantization = new ColorQuantization($this->_imageData, $this->_options->asArray());
+      $palette = $this->_palette;
+
       $layers = $this->trace(
         $this->interpolate(
           $this->scan(
-            $this->createLayers($quantization->getMatrix()),
+            $this->createLayers(
+              $this->createMatrix($this->_imageData, $palette)
+            ),
             $this->_options[self::OPTION_MINIMUM_PATH_NODES]
           )
         )
       );
-      $palette = $quantization->getPalette();
 
       $precision = $this->_options[self::OPTION_COORDINATE_PRECISION];
       $strokeWidth = $this->_options[self::OPTION_STROKE_WIDTH];
@@ -112,7 +119,6 @@ namespace Carica\CanvasGraphics\Vectorizer {
       );
       $addBackground = TRUE;
       foreach ($layers as $colorIndex => $paths) {
-        /** @var Color $color */
         $color = $palette[$colorIndex];
         $rgb = $color->toHexString();
         $opacity = $color['alpha'] < 255 ? number_format($color['alpha'] / 255, 2) : NULL;
@@ -198,6 +204,42 @@ namespace Carica\CanvasGraphics\Vectorizer {
           $pathNode->setAttribute('d', $dimensions);
         }
       }
+    }
+
+    public function createMatrix(ImageData $imageData, Color\Palette $palette): array {
+      $width = $imageData->width;
+      $height = $imageData->height;
+      $result = \array_fill(
+        0,
+        $height + 2,
+        \array_fill(0, $width + 2, -1)
+      );
+      $cache = [];
+      for ($y = 0; $y < $height; $y++) {
+        for ($x = 0; $x < $width; $x++) {
+          $index = ($y * $width + $x) * 4;
+          $pixelColor = [
+            'red' => $imageData->data[$index],
+            'green' => $imageData->data[$index + 1],
+            'blue' => $imageData->data[$index + 2],
+            'alpha' => $imageData->data[$index + 3]
+          ];
+          $rgba =
+            ($pixelColor['red'] << 24) +
+            ($pixelColor['green'] << 16) +
+            ($pixelColor['blue'] << 8) +
+            $pixelColor['alpha'];
+          if (isset($cache[$rgba])) {
+            $closestColorIndex = $cache[$rgba];
+          } else {
+            $closestColorIndex = $palette->getNearestColorIndex($pixelColor);
+            $cache[$rgba] = $closestColorIndex;
+          }
+          // store color index in result
+          $result[$y + 1][$x + 1] = $closestColorIndex;
+        }
+      }
+      return $result;
     }
 
     /**

@@ -43,16 +43,14 @@ namespace Carica\CanvasGraphics\Color\Palette {
         );
         $pixelArray[] = $color;
       }
-
       $cmap = $this->quantize($pixelArray, $this->_numberOfColors);
-      $palette = $cmap->palette();
 
-      return \array_map(
-        function ($rgb) {
-          return Color::create(...$rgb);
-        },
-        $palette
-      );
+      $palette = [];
+      foreach ($cmap->palette() as $rgb) {
+        $color = Color::create(...$rgb);
+        $palette[$color->toInt()] = $color;
+      }
+      return $palette;
     }
 
     private function colorToInt($color) {

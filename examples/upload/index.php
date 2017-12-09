@@ -27,40 +27,42 @@ if (
     // start converting
     $image = CanvasGraphics\Canvas\GD\Image::load($bitmapFile);
     if ($image) {
+      $start = microtime(TRUE);
+
       $image->filter(
         new CanvasGraphics\Canvas\GD\Filter\LimitSize(200, 200),
         new CanvasGraphics\Canvas\GD\Filter\Blur(4)
       );
       $context = $image->getContext('2d');
       $imageData = $context->getImageData();
-      $start = microtime(TRUE);
       $paths = new Vectorizer\Paths(
         $imageData,
+        CanvasGraphics\Color\PaletteFactory::createPalette(
+          CanvasGraphics\Color\PaletteFactory::PALETTE_COLOR_THIEF,
+          $imageData,
+          16
+        ),
         [
           Vectorizer\Paths::OPTION_LINE_THRESHOLD => 1.0,
           Vectorizer\Paths::OPTION_QUADRATIC_SPLINE_THRESHOLD => 1.0,
           Vectorizer\Paths::OPTION_ENHANCE_RIGHT_ANGLE => FALSE,
           Vectorizer\Paths::OPTION_MINIMUM_PATH_NODES => 8,
           Vectorizer\Paths::OPTION_COORDINATE_PRECISION => 0,
-          Vectorizer\Paths::OPTION_STROKE_WIDTH => 1,
-
-          Vectorizer\Paths\ColorQuantization::OPTION_PALETTE => CanvasGraphics\Color\PaletteFactory::PALETTE_COLOR_THIEF,
-          Vectorizer\Paths\ColorQuantization::OPTION_NUMBER_OF_COLORS => 16,
-          Vectorizer\Paths\ColorQuantization::OPTION_CYCLES => 1,
-          Vectorizer\Paths\ColorQuantization::OPTION_MINIMUM_COLOR_RATIO => 0
+          Vectorizer\Paths::OPTION_STROKE_WIDTH => 1
         ]
       );
       $svg = new SVG\Document(
-        $imageData->width,
-        $imageData->height,
+        $imageData->width * 3,
+        $imageData->height * 3,
         [
           SVG\Document::OPTION_BLUR => 0,
-          SVG\Document::OPTION_FORMAT_OUTPUT => FALSE
+          SVG\Document::OPTION_FORMAT_OUTPUT => TRUE
         ]
       );
       $svg->append($paths);
       $xml = $svg->getXML();
       file_put_contents($path.'/'.$id.'.svg', $xml);
+
       $timeNeeded = microtime(TRUE) - $start;
 
       $sizeBitmap = filesize($bitmapFile);

@@ -70,6 +70,14 @@ namespace Carica\CanvasGraphics {
       }
     }
 
+    public function toInt():int {
+      return
+        ($this->_rgba['red'] << 24) +
+        ($this->_rgba['green'] << 16) +
+        ($this->_rgba['blue'] << 8) +
+        $this->_rgba['alpha'];
+    }
+
     public function asHSL() {
       if (NULL === $this->_hsl) {
         $this->_hsl = self::convertRGBToHSL($this->_rgba['red'], $this->_rgba['green'], $this->_rgba['blue']);
