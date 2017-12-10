@@ -18,17 +18,17 @@ allowed and the handling of the alpha transparency is different.
 
 I treat alpha transparency as it would be with a white background.
 
-![Colors](docs/images/colors.png)
+![Colors](docs/images/colors.png?raw=true)
 
 ### Gradients
 
 A loose adoption of [Gradify](https://github.com/fraser-hemp/gradify). It extracts the
 four colors using the palette from the Colors experiment. 
 
-![Gradients](docs/images/gradients.png)
+![Gradients](docs/images/gradients.png?raw=true)
 
 ### Paths
 
 Traces an bitmap and creates SVG paths. Based on [ImageTracerJS](https://github.com/jankovicsandras/imagetracerjs).
   
-![ImageTracer](docs/images/trace-paths.png)
+![ImageTracer](docs/images/trace-paths.png?raw=true)
