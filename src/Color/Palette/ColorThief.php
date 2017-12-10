@@ -18,7 +18,7 @@ namespace Carica\CanvasGraphics\Color\Palette {
     private $_backgroundColor;
 
     public function __construct(ImageData $imageData, int $numberOfColors, Color $backgroundColor = NULL) {
-      if ($numberOfColors < 2 || $numberOfColors > 256) {
+      if ($numberOfColors < 1 || $numberOfColors > 256) {
         throw new \OutOfRangeException('The number of palette colors must be between 2 and 256 inclusive.');
       }
       $this->_imageData = $imageData;
@@ -62,11 +62,11 @@ namespace Carica\CanvasGraphics\Color\Palette {
      * @param array $pixels
      * @param int $numberOfColors
      * @return bool|ColorThief\CMap
+     * @throws \InvalidArgumentException
      */
     public function quantize(array $pixels, int $numberOfColors): ColorThief\CMap {
-      if ($numberOfColors < 2 || $numberOfColors > 256 || \count($pixels) < 1) {
-        // echo 'wrong number of maxcolors'."\n";
-        return FALSE;
+      if (\count($pixels) < 1) {
+        throw new \InvalidArgumentException('Empty pixels array.');
       }
       $histogram = $this->getHistogram($pixels);
       $vBox = $this->createVBoxFromHistogram($histogram);
@@ -93,7 +93,7 @@ namespace Carica\CanvasGraphics\Color\Palette {
 
       // calculate the actual colors
       $cmap = new ColorThief\CMap();
-      for ($i = \count($priorityQueue); $i > 0; $i--) {
+      for ($i = \min($numberOfColors, \count($priorityQueue)) - 1; $i >= 0; $i--) {
         $cmap->push($priorityQueue->pop());
       }
 
