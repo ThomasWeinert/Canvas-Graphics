@@ -12,6 +12,7 @@ namespace Carica\CanvasGraphics\SVG {
     private $_document;
     private $_shapesNode;
     private $_styleNode;
+    private $_definitionsNode;
 
     private $_width;
     private $_height;
@@ -62,11 +63,22 @@ namespace Carica\CanvasGraphics\SVG {
       return $this->_shapesNode;
     }
 
+    public function getDefinitionsNode() {
+      if (NULL === $this->_definitionsNode) {
+        $document = $this->getShapesNode()->ownerDocument;
+        $document->documentElement->insertBefore(
+          $this->_definitionsNode = $document->createElementNS(self::XMLNS_SVG,'defs', "\n"),
+          $document->documentElement->firstChild
+        );
+      }
+      return $this->_definitionsNode;
+    }
+
     public function appendStyle($selector, array $properties) {
       if (NULL === $this->_styleNode) {
         $document = $this->getShapesNode()->ownerDocument;
         $document->documentElement->insertBefore(
-          $this->_styleNode = $document->createElement('style', "\n"),
+          $this->_styleNode = $document->createElementNS(self::XMLNS_SVG, 'style', "\n"),
           $document->documentElement->firstChild
         );
         $this->_styleNode->setAttribute('type', 'text/css');

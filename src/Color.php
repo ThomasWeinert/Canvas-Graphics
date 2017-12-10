@@ -110,6 +110,14 @@ namespace Carica\CanvasGraphics {
       return $this->_hsl;
     }
 
+    public function removeAlpha(Color $backgroundColor = NULL) {
+      $this->_rgba = iterator_to_array(
+        self::removeAlphaFromColor($this, $backgroundColor),
+        TRUE
+      );
+      return $this;
+    }
+
     /**
      * @param int $red
      * @param int $green
