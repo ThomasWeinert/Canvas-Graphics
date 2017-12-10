@@ -1,6 +1,3 @@
-# Ignore generated docs
-docs/
-
 # Ignore composer files
 vendor
 
