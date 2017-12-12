@@ -17,19 +17,23 @@ namespace Carica\CanvasGraphics\Vectorizer {
    */
   class Primitive implements Appendable {
 
+    public const OPTION_SHAPE_TYPE = 'shape_type';
     public const OPTION_NUMBER_OF_SHAPES = 'number_of_shapes';
     public const OPTION_OPACITY_START = 'opacity_start';
     public const OPTION_OPACITY_ADJUST = 'opacity_adjust';
     public const OPTION_ITERATION_START_SHAPES = 'shapes_start_random';
     public const OPTION_ITERATION_STOP_MUTATION_FAILURES = 'shapes_mutation_failures';
 
-    public const OPTION_BLUR_FILTER_DEVIATION = 'blur_filter_deviation';
+    public const SHAPE_TRIANGLE = 'triangle';
+    public const SHAPE_RECTANGLE = 'rectangle';
 
     private static $_optionDefaults = [
       self::OPTION_NUMBER_OF_SHAPES => 1,
       self::OPTION_OPACITY_START => 1.0,
       self::OPTION_ITERATION_START_SHAPES => 1, //200,
       self::OPTION_ITERATION_STOP_MUTATION_FAILURES => 1, //30
+
+      self::OPTION_SHAPE_TYPE => self::SHAPE_TRIANGLE
     ];
     private $_options;
 
@@ -44,7 +48,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $this->_options = new Options(self::$_optionDefaults, $options);
     }
 
-    public function appendTo(Document $svg) {
+    public function appendTo(Document $svg): void {
       $alpha = $this->_options[self::OPTION_OPACITY_START] * 255;
       $numberOfShapes = $this->_options[self::OPTION_NUMBER_OF_SHAPES];
       $startShapeCount = $this->_options[self::OPTION_ITERATION_START_SHAPES];
@@ -79,8 +83,13 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $targetData = $targetWithShape = $targetContext->getImageData();
 
       $createShape = function() use ($width, $height) {
-        return new Primitive\Shape\Triangle($width, $height);
-        //return new Primitive\Shape\Rectangle($width, $height);
+        switch ($this->_options[self::OPTION_SHAPE_TYPE]) {
+        case self::SHAPE_RECTANGLE :
+          return new Primitive\Shape\Rectangle($width, $height);
+        case self::SHAPE_TRIANGLE :
+        default:
+          return new Primitive\Shape\Triangle($width, $height);
+        }
       };
 
       for ($i = 0; $i < $numberOfShapes; $i++) {

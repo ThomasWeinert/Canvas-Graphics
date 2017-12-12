@@ -41,6 +41,8 @@ if (
           Vectorizer\Primitive::OPTION_OPACITY_START => 1.0,
           Vectorizer\Primitive::OPTION_ITERATION_START_SHAPES => 5, //200,
           Vectorizer\Primitive::OPTION_ITERATION_STOP_MUTATION_FAILURES => 10, //30
+
+          Vectorizer\Primitive::OPTION_SHAPE_TYPE => Vectorizer\Primitive::SHAPE_TRIANGLE
         ]
       );
       $svg = new SVG\Document(
