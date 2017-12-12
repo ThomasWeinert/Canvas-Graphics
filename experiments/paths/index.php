@@ -7,6 +7,15 @@ use \Carica\CanvasGraphics;
 use \Carica\CanvasGraphics\SVG;
 use \Carica\CanvasGraphics\Vectorizer;
 
+$numberOfColors = max(
+  1,
+  min(128, (int)($_POST['number_of_colors'] ?? 16))
+);
+$blurFactor = max(
+  0,
+  min(12, (int)($_POST['blur_factor'] ?? 4))
+);
+
 if (
   isset($_FILES['bitmap']['tmp_name']) &&
   is_uploaded_file($_FILES['bitmap']['tmp_name'])
@@ -31,7 +40,7 @@ if (
 
       $image->filter(
         new CanvasGraphics\Canvas\GD\Filter\LimitSize(200, 200),
-        new CanvasGraphics\Canvas\GD\Filter\Blur(4)
+        new CanvasGraphics\Canvas\GD\Filter\Blur($blurFactor)
       );
       $context = $image->getContext('2d');
       $imageData = $context->getImageData();
@@ -40,7 +49,7 @@ if (
         CanvasGraphics\Color\PaletteFactory::createPalette(
           CanvasGraphics\Color\PaletteFactory::PALETTE_COLOR_THIEF,
           $imageData,
-          16
+          $numberOfColors
         ),
         [
           Vectorizer\Paths::OPTION_LINE_THRESHOLD => 1.0,
@@ -100,7 +109,9 @@ $values = [
   'size_bitmap' => isset($bitmapFile) ? bytesToString($sizeBitmap, 0) : '',
   'size_svg' => isset($bitmapFile) ? bytesToString($sizeSvg) : '',
   'size_factor' => isset($bitmapFile) ? number_format($sizeFactor) : '',
-  'time_needed' => isset($timeNeeded) ? number_format($timeNeeded, 4) : ''
+  'time_needed' => isset($timeNeeded) ? number_format($timeNeeded, 4) : '',
+  'number_of_colors' => (int)$numberOfColors,
+  'blur_factor' => (int)$blurFactor
 ]
 
 ?>
@@ -148,7 +159,12 @@ $values = [
     <form action="index.php" method="post" enctype="multipart/form-data">
       <label>Bitmap file:</label>
       <input type="file" name="bitmap">
+      <label>Number of colors:</label>
+      <input type="number" name="number_of_colors" min="1" max="128" step="1" value="<?=$values['number_of_colors']?>">
+      <label>Blur strength:</label>
+      <input type="number" name="blur_factor" min="1" max="12" step="1" value="<?=$values['blur_factor']?>">
       <button type="submit">Upload</button>
+      <hr>
       <ul>
         <li>Bitmap: <?=$values['size_bitmap']?></li>
         <li>SVG: <?=$values['size_svg']?> (<?=$values['size_factor']?>%) </li>

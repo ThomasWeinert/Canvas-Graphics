@@ -5,6 +5,11 @@ ini_set('max_execution_time', 60);
 
 use \Carica\CanvasGraphics;
 
+$numberOfColors = max(
+  1,
+  min(128, (int)($_POST['number_of_colors'] ?? 6))
+);
+
 if (
   isset($_FILES['bitmap']['tmp_name']) &&
   is_uploaded_file($_FILES['bitmap']['tmp_name'])
@@ -18,11 +23,6 @@ if (
     // start converting
     $image = CanvasGraphics\Canvas\GD\Image::load($_FILES['bitmap']['tmp_name']);
     if ($image) {
-      $numberOfColors = max(
-        1,
-        min(128, (int)($_POST['number_of_colors'] ?? 16))
-      );
-
       $start = microtime(TRUE);
 
 
@@ -55,7 +55,7 @@ if (
 
 $values = [
   'colors' => $colors ?? '',
-  'number_of_colors' => isset($numberOfColors) ? (int)$numberOfColors : '16',
+  'number_of_colors' => $numberOfColors,
   'time_needed' => isset($timeNeeded) ? number_format($timeNeeded, 4) : ''
 ]
 
@@ -108,6 +108,7 @@ $values = [
       <label>Number of colors:</label>
       <input type="number" name="number_of_colors" min="1" max="128" step="1" value="<?=$values['number_of_colors']?>">
       <button type="submit">Upload</button>
+      <hr>
       <ul>
         <li>Time: <?=$values['time_needed']?>s </li>
       </ul>
