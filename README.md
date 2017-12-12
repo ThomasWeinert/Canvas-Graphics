@@ -33,8 +33,9 @@ Traces an bitmap and creates SVG paths. Based on [ImageTracerJS](https://github.
 
 ### Primitive 
 
-Use primitive shapes (triangle, rect) to create an approximate version of the image. Even
+Use [primitive](http://primitive.lol/) shapes (triangle, rect) to create an approximate version of the image. Even
 with only a very fe shapes and a strong blur the result is good impression of the image. 
-But it is really expensive to create.
+But it is really expensive to create. My implementation is based on 
+[primitive.js](https://github.com/ondras/primitive.js).
 
-![Primitive](docs/images/primitive.png)
+![Primitive](docs/images/primitive.png?raw=true)
