@@ -2,13 +2,33 @@
 namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
 
   use Carica\CanvasGraphics\Canvas\CanvasContext2D;
+  use Carica\CanvasGraphics\SVG\Document;
   use Carica\CanvasGraphics\Vectorizer\Primitive\Shape;
 
   class Polygon extends Shape {
 
     private $_points;
     private $_box;
-    private $_maxDistance = 200;
+    private $_maxDistance = 100;
+
+    public function appendTo(Document $svg) {
+      $parent = $svg->getShapesNode();
+      $document = $parent->ownerDocument;
+
+      /** @var \DOMElement $path */
+      $path = $parent->appendChild(
+        $document->createElementNS(self::XMLNS_SVG, 'path')
+      );
+      $dimensions = sprintf('M %d %d', ...$this->_points[0]);
+      for ($i = 1, $c = \count($this->_points); $i < $c; $i++) {
+        $dimensions .= sprintf(' L %d %d', ...$this->_points[$i]);
+      }
+      $dimensions .= ' Z';
+      $path->setAttribute(
+        'd', $dimensions
+      );
+      $path->setAttribute('fill', $this->getColor()->toHexString());
+    }
 
     public function __construct(int $width, int $height, int $corners) {
       $this->_points = $this->_createPoints($width, $height, $corners);

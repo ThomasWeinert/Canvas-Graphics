@@ -6,6 +6,6 @@ namespace Carica\CanvasGraphics\SVG {
 
     public const XMLNS_SVG = 'http://www.w3.org/2000/svg';
 
-    public function appendTo(Document $document);
+    public function appendTo(Document $svg): void;
   }
 }

@@ -143,6 +143,7 @@ namespace Carica\CanvasGraphics {
     /**
      * @param array $values
      * @return Color
+     * @throws \LogicException
      */
     public static function createFromArray(array $values): self {
       return new self(

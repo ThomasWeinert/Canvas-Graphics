@@ -5,6 +5,7 @@ namespace Carica\CanvasGraphics\Canvas\GD {
   use Carica\CanvasGraphics\Canvas\CanvasContext2D;
   use Carica\CanvasGraphics\Canvas\ImageData;
   use Carica\CanvasGraphics\Canvas\Path2D;
+  use Carica\CanvasGraphics\Color;
 
   /**
    * Class GDContext
@@ -82,6 +83,24 @@ namespace Carica\CanvasGraphics\Canvas\GD {
           __CLASS__
         )
       );
+    }
+
+    public function setFillColor($color) {
+      $this->_properties['fillcolor'] = [
+        $color['red'] ?? $color[0] ?? 0,
+        $color['green'] ?? $color[1] ?? 0,
+        $color['blue'] ?? $color[2] ?? 0,
+        $color['alpha'] ?? $color[3] ?? 255
+      ];
+    }
+
+    public function setStrokeColor($color) {
+      $this->_properties['strokecolor'] = [
+        $color['red'] ?? $color[0] ?? 0,
+        $color['green'] ?? $color[1] ?? 0,
+        $color['blue'] ?? $color[2] ?? 0,
+        $color['alpha'] ?? $color[3] ?? 255
+      ];
     }
 
     public function toBlob(string $type = 'image/png', float $encoderOptions = NULL) {
