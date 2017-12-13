@@ -30,17 +30,17 @@ if (
       $start = microtime(TRUE);
 
       $image->filter(
-        new CanvasGraphics\Canvas\GD\Filter\LimitSize(200, 200)
+        new CanvasGraphics\Canvas\GD\Filter\LimitSize(150, 150)
       );
       $context = $image->getContext('2d');
       $imageData = $context->getImageData();
       $paths = new Vectorizer\Primitive(
         $imageData,
         [
-          Vectorizer\Primitive::OPTION_NUMBER_OF_SHAPES => 5,
-          Vectorizer\Primitive::OPTION_OPACITY_START => 1.0,
-          Vectorizer\Primitive::OPTION_ITERATION_START_SHAPES => 5, //200,
-          Vectorizer\Primitive::OPTION_ITERATION_STOP_MUTATION_FAILURES => 10, //30
+          Vectorizer\Primitive::OPTION_NUMBER_OF_SHAPES => 10,
+          Vectorizer\Primitive::OPTION_OPACITY_START => 1,
+          Vectorizer\Primitive::OPTION_ITERATION_START_SHAPES => 10, //200,
+          Vectorizer\Primitive::OPTION_ITERATION_STOP_MUTATION_FAILURES => 15, //30
 
           Vectorizer\Primitive::OPTION_SHAPE_TYPE => Vectorizer\Primitive::SHAPE_TRIANGLE
         ]
@@ -49,7 +49,7 @@ if (
         $imageData->width,
         $imageData->height,
         [
-          SVG\Document::OPTION_BLUR => 16,
+          SVG\Document::OPTION_BLUR => 12,
           SVG\Document::OPTION_FORMAT_OUTPUT => TRUE
         ]
       );

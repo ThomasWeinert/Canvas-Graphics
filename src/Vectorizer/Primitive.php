@@ -26,6 +26,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
     public const SHAPE_TRIANGLE = 'triangle';
     public const SHAPE_RECTANGLE = 'rectangle';
+    public const SHAPE_ELLIPSE = 'ellipse';
 
     private static $_optionDefaults = [
       self::OPTION_NUMBER_OF_SHAPES => 1,
@@ -49,7 +50,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
     }
 
     public function appendTo(Document $svg): void {
-      $alpha = $this->_options[self::OPTION_OPACITY_START] * 255;
+      $alpha = $this->_options[self::OPTION_OPACITY_START];
       $numberOfShapes = $this->_options[self::OPTION_NUMBER_OF_SHAPES];
       $startShapeCount = $this->_options[self::OPTION_ITERATION_START_SHAPES];
       $allowedMutationFailures = $this->_options[self::OPTION_ITERATION_STOP_MUTATION_FAILURES];
@@ -65,8 +66,9 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $document = $parent->ownerDocument;
 
       /** @var \DOMElement $rectNode */
-      $rectNode = $parent->appendChild(
-        $document->createElementNS(self::XMLNS_SVG, 'rect')
+      $rectNode = $parent->parentNode->insertBefore(
+        $document->createElementNS(self::XMLNS_SVG, 'rect'),
+        $parent
       );
       $rectNode->setAttribute('x', 0);
       $rectNode->setAttribute('y', 0);
@@ -80,29 +82,33 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $targetContext = $target->getContext('2d');
       $targetContext->fillColor = $palette[0];
       $targetContext->fillRect(0,0, $width, $height);
-      $targetData = $targetWithShape = $targetContext->getImageData();
 
       $createShape = function() use ($width, $height) {
         switch ($this->_options[self::OPTION_SHAPE_TYPE]) {
         case self::SHAPE_RECTANGLE :
           return new Primitive\Shape\Rectangle($width, $height);
+        case self::SHAPE_ELLIPSE :
+          return new Primitive\Shape\Ellipse($width, $height);
         case self::SHAPE_TRIANGLE :
         default:
           return new Primitive\Shape\Triangle($width, $height);
         }
       };
 
+      $targetData = $targetContext->getImageData();
       for ($i = 0; $i < $numberOfShapes; $i++) {
         $currentScore = 0;
         $currentShape = NULL;
+        $currentTarget = NULL;
         // create n Shapes, compare them an keep the best
         for ($j = 0; $j < $startShapeCount; $j++) {
           [$shape, $score, $targetWithShape] = $this->getScoredShape(
-            $original, $targetData, $createShape
+            $original, $targetData, $createShape, NULL, $alpha
           );
           if ($score > $currentScore) {
             $currentScore = $score;
             $currentShape = $shape;
+            $currentTarget = $targetWithShape;
           }
         }
 
@@ -110,29 +116,33 @@ namespace Carica\CanvasGraphics\Vectorizer {
         $failureCount = 0;
         while ($allowedMutationFailures > $failureCount) {
           [$shape, $score, $targetWithShape] = $this->getScoredShape(
-            $original, $targetData, $createShape, $currentShape
+            $original, $targetData, $createShape, $currentShape, $alpha
           );
           if ($score > $currentScore) {
             $currentScore = $score;
             $currentShape = $shape;
+            $currentTarget = $targetWithShape;
             $failureCount = 0;
           } else {
             $failureCount++;
           }
         }
-        $svg->append($currentShape);
-        $targetData = $targetWithShape;
+
+        if (isset($currentShape, $currentTarget)) {
+          $svg->append($currentShape);
+          $targetData = $currentTarget;
+        }
       }
     }
 
     private function getScoredShape(
-      ImageData $original, ImageData $target, \Closure $createShape, Shape $shape = NULL
+      ImageData $original, ImageData $target, \Closure $createShape, Shape $shape = NULL, float $alpha = 1
     ) {
       $shape = $shape ? $shape->mutate() : $createShape();
       $shapeData = $shape->rasterize()->getContext('2d')->getImageData();
       $shapeBox = $shape->getBoundingBox();
       // get color and set on shape
-      $shape->setColor($this->computeColor($shapeBox, $shapeData, $original, $target));
+      $shape->setColor($this->computeColor($shapeBox, $shapeData, $original, $target, $alpha));
       // apply shape to target image data
       $targetWithShape = $this->applyShape($shape->getColor(), $shapeBox, $shapeData, $target);
       // compare with original and return score
@@ -177,11 +187,10 @@ namespace Carica\CanvasGraphics\Vectorizer {
       return $target;
     }
 
-    private function computeColor(array $offset, ImageData $shape, ImageData $original, ImageData $target, float $alpha = 1) {
+    private function computeColor(
+      array $offset, ImageData $shape, ImageData $original, ImageData $target, float $alpha = 1
+    ) {
       $color = [0,0,0, $alpha * 255];
-	    $originalData = $original->data;
-      $targetData = $target->data;
-      $shapeData = $shape->data;
 
       $sw = $offset['width'];
       $sh = $offset['height'];
@@ -197,26 +206,21 @@ namespace Carica\CanvasGraphics\Vectorizer {
           $fx = $offset['left'] + $sx;
           if ($fx < 0 || $fx >= $fw) { continue; } /* outside of the large canvas (horizontally) */
 
-          $si = 4 * ($sx + $sy*$sw); /* shape (local) index */
-          if (!isset($shapeData[$si]) || $shapeData[$si+3] === 0) { continue; } /* only where drawn */
+          $si = 4 * ($sx + $sy * $sw); /* shape (local) index */
+          if (!isset($shape->data[$si]) || $shape->data[$si+3] === 0) { continue; } /* only where drawn */
 
           $fi = 4 * ($fx + $fy * $fw); /* full (global) index */
-          $color[0] += $originalData[$fi];
-          $color[1] += $originalData[$fi+1];
-          $color[2] += $originalData[$fi+2];
 
-          /*
-          $color[0] += ($targetData[$fi] - $originalData[$fi]) / $alpha + $originalData[$fi];
-          $color[1] += ($targetData[$fi+1] - $originalData[$fi+1]) / $alpha + $originalData[$fi+1];
-          $color[2] += ($targetData[$fi+2] - $originalData[$fi+2]) / $alpha + $originalData[$fi+2];
-          */
+          $color[0] += $original->data[$fi];
+          $color[1] += $original->data[$fi+1];
+          $color[2] += $original->data[$fi+2];
           $count++;
         }
       }
       if ($count > 0) {
-        return Color::create($color[0] / $count, $color[1] / $count, $color[2] / $count);
+        return Color::create($color[0] / $count, $color[1] / $count, $color[2] / $count, $alpha * 255);
       } else {
-        return Color::createGray(255);
+        return Color::createGray(255, $alpha * 255);
       }
     }
 

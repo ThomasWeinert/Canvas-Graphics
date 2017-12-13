@@ -30,7 +30,7 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
         $box = $this->getBoundingBox();
         $this->_canvas = $canvas = Image::create(\max($box['width'], 1), \max($box['height'], 1));
         $context = $canvas->getContext();
-        $context->fillColor = [255, 0, 0, 255];
+        $context->fillColor = [0, 255, 0, 255];
         $context->translate(-$box['left'],-$box['top']);
         $this->render($context);
       }

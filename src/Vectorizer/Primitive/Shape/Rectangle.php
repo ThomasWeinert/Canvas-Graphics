@@ -19,16 +19,18 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
       $parent = $svg->getShapesNode();
       $document = $parent->ownerDocument;
 
-      /** @var \DOMElement $rectNode */
-      $rectNode = $parent->appendChild(
+      /** @var \DOMElement $Node */
+      $Node = $parent->appendChild(
         $document->createElementNS(self::XMLNS_SVG, 'rect')
       );
-      $rectNode->setAttribute('x', $this->_left);
-      $rectNode->setAttribute('y', $this->_top);
-      $rectNode->setAttribute('width', $this->_right - $this->_left);
-      $rectNode->setAttribute('height', $this->_bottom - $this->_top);
-      $rectNode->setAttribute('fill', $this->getColor()->toHexString());
-      $rectNode->setAttribute('fill', $this->getColor()->toHexString());
+      $shapeNodeNode->setAttribute('x', $this->_left);
+      $Node->setAttribute('y', $this->_top);
+      $Node->setAttribute('width', $this->_right - $this->_left);
+      $Node->setAttribute('height', $this->_bottom - $this->_top);
+      $Node->setAttribute('fill', $this->getColor()->toHexString());
+      if ($this->getColor()->alpha < 255) {
+        $shapeNode->setAttribute('fill-opacity', number_format($this->getColor()->alpha / 255, 1));
+      }
     }
 
     public function __construct(int $width, int $height) {

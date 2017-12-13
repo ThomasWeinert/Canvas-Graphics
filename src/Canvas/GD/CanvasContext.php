@@ -399,7 +399,30 @@ namespace Carica\CanvasGraphics\Canvas\GD {
     }
 
     public function fill(): void {
-      if ($points = $this->getPolygonPoints($this->getCurrentPath())) {
+      $path = $this->getCurrentPath();
+      if (\count($path) < 1) {
+        return;
+      }
+      if (\count($path) === 1) {
+        $segment = $path[0];
+        if ($segment instanceof Path2D\Ellipse) {
+          $center = $this->applyToPoint($segment->getCenterX(), $segment->getCenterY());
+          \imagefilledellipse(
+            $this->_imageResource,
+            $center[0],
+            $center[1],
+            $segment->getRadiusX() * 2,
+            $segment->getRadiusY() * 2,
+            $this->getColorIndex(...$this->_properties['fillcolor'])
+          );
+          $this->_imageData = NULL;
+          return;
+        }
+        if ($segment instanceof Path2D\Rectangle) {
+          $this->fillRect($segment->getX(), $segment->getY(), $segment->getWidth(), $segment->getHeight());
+          return;
+        }
+      } elseif ($points = $this->getPolygonPoints($path)) {
         $list = array_reduce(
           $points,
           function($carry, $point) {
@@ -411,12 +434,15 @@ namespace Carica\CanvasGraphics\Canvas\GD {
           []
         );
         \imagefilledpolygon(
-          $this->_imageResource, $list, \count($points) - 1, $this->getColorIndex(...$this->_properties['strokecolor'])
+          $this->_imageResource,
+          $list,
+          \count($points) - 1,
+          $this->getColorIndex(...$this->_properties['fillcolor'])
         );
-      } else {
-        throw new \LogicException('Only polygon paths can be filled.');
+        $this->_imageData = NULL;
+        return;
       }
-      $this->_imageData = NULL;
+      throw new \LogicException('Unsupported path.');
     }
 
     private function getPolygonPoints(Path2D $path) {
@@ -460,6 +486,14 @@ namespace Carica\CanvasGraphics\Canvas\GD {
 
     public function lineTo(int $x, int $y) {
       $this->getCurrentPath()->lineTo($x, $y);
+    }
+
+    public function ellipse(int $centerX, int $centerY, int $radiusX, int $radiusY) {
+      $this->getCurrentPath()->ellipse($centerX, $centerY, $radiusX,  $radiusY);
+    }
+
+    public function rect(int $x, int $y, int $width, int $height) {
+      $this->getCurrentPath()->rect($x, $y, $width, $height);
     }
   }
 }

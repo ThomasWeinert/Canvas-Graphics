@@ -53,6 +53,10 @@ namespace Carica\CanvasGraphics\Canvas {
 
     public function lineTo(int $x, int $y);
 
+    public function ellipse(int $centerX, int $centerY, int $radiusX, int $radiusY);
+
+    public function rect(int $x, int $y, int $width, int $height);
+
     /* Rectangle methods */
 
     public function clearRect(int $x, int $y, int $width, int $height);

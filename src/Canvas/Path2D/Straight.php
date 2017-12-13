@@ -2,7 +2,7 @@
 
 namespace Carica\CanvasGraphics\Canvas\Path2D {
 
-  abstract class Straight extends Segment {
+  abstract class Straight extends Points {
 
     public function __construct(string $type, int $x, int $y) {
       parent::__construct($type, [$x, $y]);

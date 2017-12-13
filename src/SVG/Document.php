@@ -32,7 +32,7 @@ namespace Carica\CanvasGraphics\SVG {
       $this->_options = new Options(self::$_optionDefaults, $options);
     }
 
-    public function getShapesNode() {
+    public function getDocument() {
       if (NULL === $this->_document) {
         $this->_document = $document = new \DOMDocument();
         $document->formatOutput = $this->_options[self::OPTION_FORMAT_OUTPUT];
@@ -42,14 +42,21 @@ namespace Carica\CanvasGraphics\SVG {
         $svg->setAttribute('version', '1.1');
         $svg->setAttribute('width', $this->_width);
         $svg->setAttribute('height', $this->_height);
+      }
+      return $this->_document;
+    }
+
+    public function getShapesNode() {
+      if (NULL === $this->_shapesNode) {
+        $document = $this->getDocument();
+        $svg = $document->documentElement;
         $svg->appendChild(
           $group = $document->createElementNS(self::XMLNS_SVG, 'g')
         );
         $blurDeviation = $this->_options[self::OPTION_BLUR];
         if ($blurDeviation > 0) {
-          $svg->insertBefore(
-            $filter = $document->createElementNS(self::XMLNS_SVG, 'filter'),
-            $group
+          $this->getDefinitionsNode()->appendChild(
+            $filter = $document->createElementNS(self::XMLNS_SVG, 'filter')
           );
           $filter->setAttribute('id', 'b');
           $filter->appendChild(
@@ -65,7 +72,7 @@ namespace Carica\CanvasGraphics\SVG {
 
     public function getDefinitionsNode() {
       if (NULL === $this->_definitionsNode) {
-        $document = $this->getShapesNode()->ownerDocument;
+        $document = $this->getDocument();
         $document->documentElement->insertBefore(
           $this->_definitionsNode = $document->createElementNS(self::XMLNS_SVG,'defs', "\n"),
           $document->documentElement->firstChild
@@ -76,7 +83,7 @@ namespace Carica\CanvasGraphics\SVG {
 
     public function appendStyle($selector, array $properties) {
       if (NULL === $this->_styleNode) {
-        $document = $this->getShapesNode()->ownerDocument;
+        $document = $this->getDocument();
         $document->documentElement->insertBefore(
           $this->_styleNode = $document->createElementNS(self::XMLNS_SVG, 'style', "\n"),
           $document->documentElement->firstChild

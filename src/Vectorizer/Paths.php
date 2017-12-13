@@ -114,7 +114,8 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $svg->appendStyle(
         'path',
         [
-          'stroke-width' => $strokeWidth
+          'stroke-width' => $strokeWidth,
+          'stroke-linejoin' => 'round'
         ]
       );
       $addBackground = TRUE;
@@ -146,8 +147,9 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
         $groupNode = $parent;
         if ($addBackground) {
-          $groupNode->appendChild(
-            $rectNode = $document->createElementNS(self::XMLNS_SVG, 'rect')
+          $parent->parentNode->insertBefore(
+            $rectNode = $document->createElementNS(self::XMLNS_SVG, 'rect'),
+            $parent
           );
           $rectNode->setAttribute('id', $styleSelector);
           $rectNode->setAttribute('x', 0);
@@ -158,7 +160,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
           continue;
         } elseif (\count($paths) > 1) {
           /** @var \DOMElement $groupNode */
-          $groupNode = $parent->appendChild(
+          $groupNode = $parent->insertBefore(
             $document->createElementNS(self::XMLNS_SVG, 'g')
           );
           $groupNode->setAttribute('id', $styleSelector);
