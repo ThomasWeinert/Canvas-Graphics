@@ -92,13 +92,10 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
         /** @var \DOMElement $rectNode */
         $rectNode = $shapes->appendChild(
-          $document->createElementNS(self::XMLNS_SVG, 'rect')
+          $document->createElementNS(self::XMLNS_SVG, 'path')
         );
-        $rectNode->setAttribute('x', 0);
-        $rectNode->setAttribute('y', 0);
-        $rectNode->setAttribute('width', $svg->getWidth());
-        $rectNode->setAttribute('height', $svg->getHeight());
         $rectNode->setAttribute('fill', 'url(#quad'.$quadIndex.')');
+        $rectNode->setAttribute('d', sprintf('M0 0h%dv%dH0z', $svg->getWidth(), $svg->getHeight()));
       }
     }
 

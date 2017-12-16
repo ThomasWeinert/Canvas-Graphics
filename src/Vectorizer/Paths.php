@@ -148,14 +148,18 @@ namespace Carica\CanvasGraphics\Vectorizer {
         $groupNode = $parent;
         if ($addBackground) {
           $parent->parentNode->insertBefore(
-            $rectNode = $document->createElementNS(self::XMLNS_SVG, 'rect'),
+            $background = $document->createElementNS(self::XMLNS_SVG, 'path'),
             $parent
           );
-          $rectNode->setAttribute('id', $styleSelector);
-          $rectNode->setAttribute('x', 0);
-          $rectNode->setAttribute('y', 0);
-          $rectNode->setAttribute('width', number_format(round($width * $scaleX, $precision), $precision));
-          $rectNode->setAttribute('height', number_format(round($height * $scaleY, $precision), $precision));
+          $background->setAttribute('id', $styleSelector);
+          $background->setAttribute(
+            'd',
+            sprintf(
+              'M0 0h%sv%sH0z',
+              number_format(round($width * $scaleX, $precision), $precision),
+              number_format(round($height * $scaleY, $precision), $precision)
+            )
+          );
           $addBackground = FALSE;
           continue;
         } elseif (\count($paths) > 1) {

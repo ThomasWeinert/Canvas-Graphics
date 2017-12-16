@@ -34,6 +34,7 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
     }
 
     public function __construct(int $width, int $height) {
+      parent::__construct($width, $height);
       [$this->_centerX, $this->_centerY] = self::createRandomPoint($width, $height);
       $this->_radiusX = 1 + \random_int(1, $this->_maxDistance);
       $this->_radiusY = 1 + \random_int(1, $this->_maxDistance);

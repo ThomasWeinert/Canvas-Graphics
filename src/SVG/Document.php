@@ -18,10 +18,14 @@ namespace Carica\CanvasGraphics\SVG {
     private $_height;
 
     public const OPTION_BLUR = 'blur';
+    public const OPTION_XML_DECLARATION = 'xml_declaration';
+    public const OPTION_SVG_VERSION = 'svg_version';
     public const OPTION_FORMAT_OUTPUT = 'format_output';
 
     private static $_optionDefaults = [
       self::OPTION_BLUR => 0,
+      self::OPTION_XML_DECLARATION => FALSE,
+      self::OPTION_SVG_VERSION => FALSE,
       self::OPTION_FORMAT_OUTPUT => FALSE
     ];
     private $_options;
@@ -39,7 +43,9 @@ namespace Carica\CanvasGraphics\SVG {
         $document->appendChild(
           $svg = $document->createElementNS(self::XMLNS_SVG, 'svg')
         );
-        $svg->setAttribute('version', '1.1');
+        if ($this->_options[self::OPTION_SVG_VERSION]) {
+          $svg->setAttribute('varsion', '1.1');
+        }
         $svg->setAttribute('width', $this->_width);
         $svg->setAttribute('height', $this->_height);
       }
@@ -53,9 +59,10 @@ namespace Carica\CanvasGraphics\SVG {
         $svg->appendChild(
           $group = $document->createElementNS(self::XMLNS_SVG, 'g')
         );
+        $definitions = $this->getDefinitionsNode();
         $blurDeviation = $this->_options[self::OPTION_BLUR];
         if ($blurDeviation > 0) {
-          $this->getDefinitionsNode()->appendChild(
+          $definitions->appendChild(
             $filter = $document->createElementNS(self::XMLNS_SVG, 'filter')
           );
           $filter->setAttribute('id', 'b');
@@ -74,7 +81,7 @@ namespace Carica\CanvasGraphics\SVG {
       if (NULL === $this->_definitionsNode) {
         $document = $this->getDocument();
         $document->documentElement->insertBefore(
-          $this->_definitionsNode = $document->createElementNS(self::XMLNS_SVG,'defs', "\n"),
+          $this->_definitionsNode = $document->createElementNS(self::XMLNS_SVG,'defs'),
           $document->documentElement->firstChild
         );
       }
@@ -121,7 +128,11 @@ namespace Carica\CanvasGraphics\SVG {
     }
 
     public function getXML() {
-      return $this->getShapesNode()->ownerDocument->saveXML();
+      $document = $this->getDocument();
+      if ($this->_options[self::OPTION_XML_DECLARATION]) {
+        return $document->saveXML();
+      }
+      return $document->saveXML($document->documentElement);
     }
   }
 }

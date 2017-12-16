@@ -38,6 +38,10 @@ namespace Carica\CanvasGraphics\Vectorizer {
     ];
     private $_options;
 
+    private $_events = [
+      'shape' => NULL
+    ];
+
     /**
      * @var
      */
@@ -65,18 +69,13 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $parent = $svg->getShapesNode();
       $document = $parent->ownerDocument;
 
-      /** @var \DOMElement $rectNode */
-      $rectNode = $parent->parentNode->insertBefore(
-        $document->createElementNS(self::XMLNS_SVG, 'rect'),
+      /** @var \DOMElement $background */
+      $background = $parent->parentNode->insertBefore(
+        $document->createElementNS(self::XMLNS_SVG, 'path'),
         $parent
       );
-      $rectNode->setAttribute('x', 0);
-      $rectNode->setAttribute('y', 0);
-      $rectNode->setAttribute('width', $width);
-      $rectNode->setAttribute('height', $height);
-      $rectNode->setAttribute('fill', $palette[0]->toHexString());
-
-
+      $background->setAttribute('fill', $palette[0]->toHexString());
+      $background->setAttribute('d', sprintf('M0 0h%dv%dH0z', $width, $height));
 
       $target = Image::create($width, $height);
       $targetContext = $target->getContext('2d');
@@ -131,47 +130,34 @@ namespace Carica\CanvasGraphics\Vectorizer {
         if (isset($currentShape, $currentTarget)) {
           $svg->append($currentShape);
           $targetData = $currentTarget;
+          if (isset($this->_events['shape'])) {
+            $this->_events['shape']($currentScore, $svg);
+          }
         }
       }
+    }
+
+    public function onShape(\Closure $listener) {
+      $this->_events['score'] = $listener;
     }
 
     private function getScoredShape(
       ImageData $original, ImageData $target, \Closure $createShape, Shape $shape = NULL, float $alpha = 1
     ) {
       $shape = $shape ? $shape->mutate() : $createShape();
-      $shapeData = $shape->rasterize()->getContext('2d')->getImageData();
-      $shapeBox = $shape->getBoundingBox();
       // get color and set on shape
-      $shape->setColor($this->computeColor($shapeBox, $shapeData, $original, $target, $alpha));
+      $shape->setColor($this->computeColor($shape, $original, $target, $alpha));
       // apply shape to target image data
-      $targetWithShape = $this->applyShape($shape->getColor(), $shapeBox, $shapeData, $target);
+      $targetWithShape = $this->applyShape($shape->getColor(), $shape, $target);
       // compare with original and return score
       $score = $this->getComparator()->getScore($original, $targetWithShape);
       return [$shape, $score, $targetWithShape];
     }
 
-    private function applyShape(Color $color, array $offset, ImageData $shape, ImageData $target) {
+    private function applyShape(Color $color, Shape $shape, ImageData $target) {
       $target = clone $target;
-
-      $sw = $offset['width'];
-      $sh = $offset['height'];
-      $fw = $target->width;
-      $fh = $target->height;
-
-      for ($sy = 0; $sy < $sh; $sy++) {
-        $fy = $sy + $offset['top'];
-        if ($fy < 0 || $fy >= $fh) { continue; } /* outside of the large canvas (vertically) */
-
-        for ($sx=0; $sx < $sw; $sx++) {
-          $fx = $offset['left'] + $sx;
-          if ($fx < 0 || $fx >= $fw) { continue; } /* outside of the large canvas (horizontally) */
-
-          $si = 4 * ($sx + $sy*$sw); /* shape (local) index */
-          if (!isset($shape->data[$si]) || $shape->data[$si+3] === 0) { continue; } /* only where drawn */
-
-          $fi = 4 * ($fx + $fy * $fw); /* full (global) index */
-
-          // change pixel data in target according to colors values and alpha
+      $shape->eachPoint(
+        function(int $fi) use ($color, $target) {
           if ($color['alpha'] < 255) {
             $factor = (float)$color['alpha'] / 255.0;
             $target->data[$fi] = $target->data[$fi] * (1 - $factor) + $color->red * $factor;
@@ -183,45 +169,25 @@ namespace Carica\CanvasGraphics\Vectorizer {
             $target->data[$fi + 2] = $color->blue;
           }
         }
-      }
+      );
       return $target;
     }
 
-    private function computeColor(
-      array $offset, ImageData $shape, ImageData $original, ImageData $target, float $alpha = 1
-    ) {
+    private function computeColor(Shape $shape, ImageData $original, ImageData $target, float $alpha = 1) {
       $color = [0,0,0, $alpha * 255];
-
-      $sw = $offset['width'];
-      $sh = $offset['height'];
-      $fw = $original->width;
-      $fh = $original->height;
       $count = 0;
-
-      for ($sy = 0; $sy < $sh; $sy++) {
-        $fy = $sy + $offset['top'];
-        if ($fy < 0 || $fy >= $fh) { continue; } /* outside of the large canvas (vertically) */
-
-        for ($sx=0; $sx < $sw; $sx++) {
-          $fx = $offset['left'] + $sx;
-          if ($fx < 0 || $fx >= $fw) { continue; } /* outside of the large canvas (horizontally) */
-
-          $si = 4 * ($sx + $sy * $sw); /* shape (local) index */
-          if (!isset($shape->data[$si]) || $shape->data[$si+3] === 0) { continue; } /* only where drawn */
-
-          $fi = 4 * ($fx + $fy * $fw); /* full (global) index */
-
+      $shape->eachPoint(
+        function(int $fi) use (&$color, &$count, $original) {
           $color[0] += $original->data[$fi];
           $color[1] += $original->data[$fi+1];
           $color[2] += $original->data[$fi+2];
           $count++;
         }
-      }
+      );
       if ($count > 0) {
         return Color::create($color[0] / $count, $color[1] / $count, $color[2] / $count, $alpha * 255);
-      } else {
-        return Color::createGray(255, $alpha * 255);
       }
+      return Color::createGray(255, $alpha * 255);
     }
 
     private function getComparator() {

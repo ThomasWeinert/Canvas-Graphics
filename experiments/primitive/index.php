@@ -39,10 +39,9 @@ if (
         [
           Vectorizer\Primitive::OPTION_NUMBER_OF_SHAPES => 10,
           Vectorizer\Primitive::OPTION_OPACITY_START => 1,
-          Vectorizer\Primitive::OPTION_ITERATION_START_SHAPES => 10, //200,
-          Vectorizer\Primitive::OPTION_ITERATION_STOP_MUTATION_FAILURES => 15, //30
-
-          Vectorizer\Primitive::OPTION_SHAPE_TYPE => Vectorizer\Primitive::SHAPE_TRIANGLE
+          Vectorizer\Primitive::OPTION_ITERATION_START_SHAPES => 15, //200,
+          Vectorizer\Primitive::OPTION_ITERATION_STOP_MUTATION_FAILURES => 10, //30
+          Vectorizer\Primitive::OPTION_SHAPE_TYPE => Vectorizer\Primitive::SHAPE_RECTANGLE
         ]
       );
       $svg = new SVG\Document(
@@ -50,12 +49,21 @@ if (
         $imageData->height,
         [
           SVG\Document::OPTION_BLUR => 12,
-          SVG\Document::OPTION_FORMAT_OUTPUT => TRUE
+          SVG\Document::OPTION_FORMAT_OUTPUT => FALSE
         ]
       );
       $svg->append($paths);
+      //$svg->append(new SVG\Loading\TwoDots());
       $xml = $svg->getXML();
       file_put_contents($path.'/'.$id.'.svg', $xml);
+
+      $document = $svg->getDocument();
+      $xpath = new DOMXPath($document);
+      $xpath->registerNamespace('svg', 'http://www.w3.org/2000/svg');
+      foreach ($xpath->evaluate('//svg:g[@filter]') as $node) {
+        $node->removeAttribute('filter');
+      }
+      $xmlNoBlur = $document->saveXML($document->documentElement);
 
       $timeNeeded = microtime(TRUE) - $start;
 
@@ -91,6 +99,7 @@ $values = [
   'bitmap' => isset($bitmapFile) ? htmlspecialchars('images/'.basename($bitmapFile)): '',
   'svg_xml' => isset($svg) ? htmlspecialchars($xml) : '',
   'svg_data' => isset($svg) ? htmlspecialchars('data:image/svg+xml;base64,'.base64_encode($xml)) : '',
+  'svg_data_no_blur' => isset($svg) ? htmlspecialchars('data:image/svg+xml;base64,'.base64_encode($xmlNoBlur)) : '',
   'size_bitmap' => isset($bitmapFile) ? bytesToString($sizeBitmap, 0) : '',
   'size_svg' => isset($bitmapFile) ? bytesToString($sizeSvg) : '',
   'size_factor' => isset($bitmapFile) ? number_format($sizeFactor) : '',
@@ -153,6 +162,7 @@ $values = [
 <section class="images">
   <img src="<?=$values['bitmap']?>"/>
   <img src="<?=$values['svg_data']?>"/>
+  <img src="<?=$values['svg_data_no_blur']?>"/>
 </section>
 <section class="xml"><?=$values['svg_xml']?></section>
 </body>

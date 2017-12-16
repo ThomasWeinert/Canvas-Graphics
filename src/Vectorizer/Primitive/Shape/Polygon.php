@@ -17,27 +17,36 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
 
       /** @var \DOMElement $path */
       $path = $parent->appendChild(
-        $document->createElementNS(self::XMLNS_SVG, 'polygon')
-      );
-      $path->setAttribute(
-        'points',
-        \implode(
-          ' ',
-          \array_map(
-            function($point) {
-              return $point[0].','.$point[1];
-            },
-            $this->_points
-          )
-        )
+        $document->createElementNS(self::XMLNS_SVG, 'path')
       );
       $path->setAttribute('fill', $this->getColor()->toHexString());
       if ($this->getColor()->alpha < 255) {
         $path->setAttribute('fill-opacity', number_format($this->getColor()->alpha / 255, 1));
       }
+      $dimensions = sprintf('M%d %d', ...$this->_points[0]);
+      $lastSegmentType = 'M';
+      for ($i = 1, $c = \count($this->_points); $i < $c; $i++) {
+        $pointString = sprintf('L%d %d', ...$this->_points[$i]);
+        $distanceString = sprintf(
+          'l%d %d',
+          $this->_points[$i][0] - $this->_points[$i-1][0],
+          $this->_points[$i][1] - $this->_points[$i-1][1]
+        );
+        $segmentString = \strlen($pointString) > \strlen($distanceString) ? $distanceString : $pointString;
+        $segmentType = $segmentString[0];
+        if ($lastSegmentType === $segmentType && $segmentString[1] === '-') {
+          $segmentString = \substr($segmentString, 1);
+        } else {
+          $lastSegmentType = $segmentType;
+        }
+        $dimensions .= $segmentString;
+      }
+      $dimensions .= 'Z';
+      $path->setAttribute('d', str_replace(' -', '-', $dimensions));
     }
 
     public function __construct(int $width, int $height, int $corners) {
+      parent::__construct($width, $height);
       $this->_points = $this->_createPoints($width, $height, $corners);
       $this->getBoundingBox();
     }

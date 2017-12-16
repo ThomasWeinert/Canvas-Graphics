@@ -19,21 +19,43 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
       $parent = $svg->getShapesNode();
       $document = $parent->ownerDocument;
 
-      /** @var \DOMElement $Node */
-      $Node = $parent->appendChild(
+
+      $shapeNode = $parent->appendChild(
+        $document->createElementNS(self::XMLNS_SVG, 'path')
+      );
+      $shapeNode->setAttribute('fill', $this->getColor()->toHexString());
+      if ($this->getColor()->alpha < 255) {
+        $shapeNode->setAttribute('fill-opacity', number_format($this->getColor()->alpha / 255, 1));
+      }
+      $shapeNode->setAttribute(
+        'd',
+        str_replace(
+          ' -',
+          '-',
+          sprintf(
+            'M%d %dh%dv%dH%dz',
+            $this->_left, $this->_top, $this->_right - $this->_left, $this->_bottom - $this->_top, $this->_left
+          )
+        )
+      );
+
+      return;
+      /** @var \DOMElement $shapeNode */
+      $shapeNode = $parent->appendChild(
         $document->createElementNS(self::XMLNS_SVG, 'rect')
       );
-      $shapeNodeNode->setAttribute('x', $this->_left);
-      $Node->setAttribute('y', $this->_top);
-      $Node->setAttribute('width', $this->_right - $this->_left);
-      $Node->setAttribute('height', $this->_bottom - $this->_top);
-      $Node->setAttribute('fill', $this->getColor()->toHexString());
+      $shapeNode->setAttribute('x', $this->_left);
+      $shapeNode->setAttribute('y', $this->_top);
+      $shapeNode->setAttribute('width', $this->_right - $this->_left);
+      $shapeNode->setAttribute('height', $this->_bottom - $this->_top);
+      $shapeNode->setAttribute('fill', $this->getColor()->toHexString());
       if ($this->getColor()->alpha < 255) {
         $shapeNode->setAttribute('fill-opacity', number_format($this->getColor()->alpha / 255, 1));
       }
     }
 
     public function __construct(int $width, int $height) {
+      parent::__construct($width, $height);
       $x1 = self::createRandomPoint($width, $height);
       $x2 = self::createRandomPoint($width, $height);
       $this->_left = \min($x1[0], $x2[0]);
