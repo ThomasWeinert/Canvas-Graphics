@@ -32,6 +32,8 @@ This implementation is based on the Javascript port, originally.
 
 ![Rotated Rectangle](images/primitive-rotated-rect.png?raw=true)
 
+![Ellipse](images/primitive-ellipse.png?raw=true)
+
    
   
           
