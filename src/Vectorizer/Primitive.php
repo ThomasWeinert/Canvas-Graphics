@@ -99,42 +99,40 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
       $targetData = $targetContext->getImageData();
       for ($i = 0; $i < $numberOfShapes; $i++) {
-        $currentScore = 0;
+        $lastChange = 0;
         $currentShape = NULL;
         $currentTarget = NULL;
         // create n Shapes, compare them an keep the best
         for ($j = 0; $j < $startShapeCount; $j++) {
-          [$shape, $score, $targetWithShape] = $this->getScoredShape(
+          [$shape, $distanceChange] = $this->getShape(
             $original, $targetData, $createShape, NULL, $alpha
           );
-          if ($score > $currentScore) {
-            $currentScore = $score;
+          if ($distanceChange < $lastChange) {
+            $lastChange = $distanceChange;
             $currentShape = $shape;
-            $currentTarget = $targetWithShape;
           }
         }
 
         // try to improve the shape
         $failureCount = 0;
         while ($allowedMutationFailures > $failureCount) {
-          [$shape, $score, $targetWithShape] = $this->getScoredShape(
+          [$shape, $distanceChange] = $this->getShape(
             $original, $targetData, $createShape, $currentShape, $alpha
           );
-          if ($score > $currentScore) {
-            $currentScore = $score;
+          if ($distanceChange < $lastChange) {
+            $lastChange = $distanceChange;
             $currentShape = $shape;
-            $currentTarget = $targetWithShape;
             $failureCount = 0;
           } else {
             $failureCount++;
           }
         }
 
-        if (isset($currentShape, $currentTarget)) {
+        if (NULL !== $currentShape) {
           $svg->append($currentShape);
-          $targetData = $currentTarget;
+          $targetData = $this->applyShape($currentShape->getColor(), $currentShape, $targetData);
           if (isset($this->_events['shape'])) {
-            $this->_events['shape']($currentScore, $svg);
+            $this->_events['shape']($lastChange, $svg);
           }
         }
       }
@@ -144,17 +142,50 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $this->_events['score'] = $listener;
     }
 
-    private function getScoredShape(
+    private function getShape(
       ImageData $original, ImageData $target, \Closure $createShape, Shape $shape = NULL, float $alpha = 1
     ) {
       $shape = $shape ? $shape->mutate() : $createShape();
       // get color and set on shape
       $shape->setColor($this->computeColor($shape, $original, $target, $alpha));
-      // apply shape to target image data
-      $targetWithShape = $this->applyShape($shape->getColor(), $shape, $target);
       // compare with original and return score
-      $score = $this->getComparator()->getScore($original, $targetWithShape);
-      return [$shape, $score, $targetWithShape];
+      $distanceChange = $this->getDistanceChange($shape, $original, $target);
+      return [$shape, $distanceChange];
+    }
+
+    private function getDistanceChange(Shape $shape, ImageData $original, ImageData $target) {
+      $distanceChange = 0;
+      $count = 0;
+      $shapePixel = [
+        $shape->getColor()->red,
+        $shape->getColor()->green,
+        $shape->getColor()->blue,
+        $shape->getColor()->alpha
+      ];
+      $shape->eachPoint(
+        function(int $fi) use (&$distanceChange, &$count, $original, $target, $shapePixel) {
+          $count++;
+          $originalPixel = $this->getPixel($original->data, $fi);
+          $targetPixel = $this->getPixel($target->data, $fi);
+          $distanceChange -= $this->getPixelDistance($originalPixel, $targetPixel);
+          $distanceChange += $this->getPixelDistance($originalPixel, $shapePixel);
+        }
+      );
+      return $distanceChange;
+    }
+
+    private function getPixel(array $data, $index): array {
+      return [
+        $data[$index], $data[$index + 1], $data[$index + 2], $data[$index + 3]
+      ];
+    }
+
+    public function getPixelDistance($a, $b) {
+      return (
+          \abs($a[0] - $b[0]) +
+          \abs($a[1] - $b[1]) +
+          \abs($a[2] - $b[2])
+        ) / (255 * 3);
     }
 
     private function applyShape(Color $color, Shape $shape, ImageData $target) {
