@@ -27,6 +27,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
     public const SHAPE_TRIANGLE = 'triangle';
     public const SHAPE_RECTANGLE = 'rectangle';
     public const SHAPE_ELLIPSE = 'ellipse';
+    public const SHAPE_RECTANGLE_ROTATED = 'rectangle_rotated';
 
     private static $_optionDefaults = [
       self::OPTION_NUMBER_OF_SHAPES => 1,
@@ -84,6 +85,8 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
       $createShape = function() use ($width, $height) {
         switch ($this->_options[self::OPTION_SHAPE_TYPE]) {
+        case self::SHAPE_RECTANGLE_ROTATED :
+          return new Primitive\Shape\RotatedRectangle($width, $height);
         case self::SHAPE_RECTANGLE :
           return new Primitive\Shape\Rectangle($width, $height);
         case self::SHAPE_ELLIPSE :
