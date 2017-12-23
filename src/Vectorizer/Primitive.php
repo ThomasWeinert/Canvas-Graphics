@@ -40,7 +40,8 @@ namespace Carica\CanvasGraphics\Vectorizer {
     private $_options;
 
     private $_events = [
-      'shape' => NULL
+      'shape-create' => NULL,
+      'shape-added' => NULL
     ];
 
     /**
@@ -83,30 +84,24 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $targetContext->fillColor = $palette[0];
       $targetContext->fillRect(0,0, $width, $height);
 
-      $createShape = function() use ($width, $height) {
-        switch ($this->_options[self::OPTION_SHAPE_TYPE]) {
-        case self::SHAPE_RECTANGLE_ROTATED :
-          return new Primitive\Shape\RotatedRectangle($width, $height);
-        case self::SHAPE_RECTANGLE :
-          return new Primitive\Shape\Rectangle($width, $height);
-        case self::SHAPE_ELLIPSE :
-          return new Primitive\Shape\Ellipse($width, $height);
-        case self::SHAPE_TRIANGLE :
-        default:
-          return new Primitive\Shape\Triangle($width, $height);
-        }
-      };
+      if (NULL !== $this->_events['shape-create']) {
+        $createShape = $this->_events['shape-create'];
+      } else {
+        $createShape = function (int $width, int $height, int $index) {
+          return $this->createShape($width, $height, $index);
+        };
+      }
 
       $targetData = $targetContext->getImageData();
       for ($i = 0; $i < $numberOfShapes; $i++) {
         $lastChange = 0;
         $currentShape = NULL;
-        $currentTarget = NULL;
+
         // create n Shapes, compare them an keep the best
         for ($j = 0; $j < $startShapeCount; $j++) {
-          [$shape, $distanceChange] = $this->getShape(
-            $original, $targetData, $createShape, NULL, $alpha
-          );
+          $shape = $createShape($width, $height, $i);
+          $shape->setColor($this->computeColor($shape, $original, $targetData, $alpha));
+          $distanceChange = $this->getDistanceChange($shape, $original, $targetData);
           if ($distanceChange < $lastChange) {
             $lastChange = $distanceChange;
             $currentShape = $shape;
@@ -116,9 +111,9 @@ namespace Carica\CanvasGraphics\Vectorizer {
         // try to improve the shape
         $failureCount = 0;
         while ($allowedMutationFailures > $failureCount) {
-          [$shape, $distanceChange] = $this->getShape(
-            $original, $targetData, $createShape, $currentShape, $alpha
-          );
+          $shape = $currentShape->mutate();
+          $shape->setColor($this->computeColor($shape, $original, $targetData, $alpha));
+          $distanceChange = $this->getDistanceChange($shape, $original, $targetData);
           if ($distanceChange < $lastChange) {
             $lastChange = $distanceChange;
             $currentShape = $shape;
@@ -131,26 +126,35 @@ namespace Carica\CanvasGraphics\Vectorizer {
         if (NULL !== $currentShape) {
           $svg->append($currentShape);
           $targetData = $this->applyShape($currentShape->getColor(), $currentShape, $targetData);
-          if (isset($this->_events['shape'])) {
-            $this->_events['shape']($lastChange, $svg);
+          if (isset($this->_events['shape-added'])) {
+            $this->_events['shape-added'](
+              $this->getComparator()->getScore($original, $targetData), $svg
+            );
           }
         }
       }
     }
 
-    public function onShape(\Closure $listener) {
-      $this->_events['score'] = $listener;
+    public function onShapeAdded(\Closure $listener) {
+      $this->_events['shape-added'] = $listener;
     }
 
-    private function getShape(
-      ImageData $original, ImageData $target, \Closure $createShape, Shape $shape = NULL, float $alpha = 1
-    ) {
-      $shape = $shape ? $shape->mutate() : $createShape();
-      // get color and set on shape
-      $shape->setColor($this->computeColor($shape, $original, $target, $alpha));
-      // compare with original and return score
-      $distanceChange = $this->getDistanceChange($shape, $original, $target);
-      return [$shape, $distanceChange];
+    public function onShapeCreate(\Closure $listener) {
+      $this->_events['shape-create'] = $listener;
+    }
+
+    public function createShape(int $width, int $height, int $index) {
+      switch ($this->_options[self::OPTION_SHAPE_TYPE]) {
+      case self::SHAPE_RECTANGLE_ROTATED :
+        return new Primitive\Shape\RotatedRectangle($width, $height);
+      case self::SHAPE_RECTANGLE :
+        return new Primitive\Shape\Rectangle($width, $height);
+      case self::SHAPE_ELLIPSE :
+        return new Primitive\Shape\Ellipse($width, $height);
+      case self::SHAPE_TRIANGLE :
+      default:
+        return new Primitive\Shape\Triangle($width, $height);
+      }
     }
 
     private function getDistanceChange(Shape $shape, ImageData $original, ImageData $target) {
@@ -182,10 +186,10 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
     public function getPixelDistance($a, $b) {
       return (
-          \abs($a[0] - $b[0]) +
-          \abs($a[1] - $b[1]) +
-          \abs($a[2] - $b[2])
-        ) / (255 * 3);
+        \abs($a[0] - $b[0]) +
+        \abs($a[1] - $b[1]) +
+        \abs($a[2] - $b[2])
+      ) / (255 * 3);
     }
 
     private function applyShape(Color $color, Shape $shape, ImageData $target) {

@@ -34,13 +34,13 @@ if (
       );
       $context = $image->getContext('2d');
       $imageData = $context->getImageData();
-      $paths = new Vectorizer\Primitive(
+      $primitive = new Vectorizer\Primitive(
         $imageData,
         [
-          Vectorizer\Primitive::OPTION_NUMBER_OF_SHAPES => 10,
+          Vectorizer\Primitive::OPTION_NUMBER_OF_SHAPES => 10, //10,
           Vectorizer\Primitive::OPTION_OPACITY_START => 1,
-          Vectorizer\Primitive::OPTION_ITERATION_START_SHAPES => 15, //200,
-          Vectorizer\Primitive::OPTION_ITERATION_STOP_MUTATION_FAILURES => 10, //30
+          Vectorizer\Primitive::OPTION_ITERATION_START_SHAPES => 15, //15, //200,
+          Vectorizer\Primitive::OPTION_ITERATION_STOP_MUTATION_FAILURES => 30, //30
           Vectorizer\Primitive::OPTION_SHAPE_TYPE => Vectorizer\Primitive::SHAPE_RECTANGLE
         ]
       );
@@ -52,7 +52,7 @@ if (
           SVG\Document::OPTION_FORMAT_OUTPUT => FALSE
         ]
       );
-      $svg->append($paths);
+      $svg->append($primitive);
       //$svg->append(new SVG\Loading\TwoDots());
       $xml = $svg->getXML();
       file_put_contents($path.'/'.$id.'.svg', $xml);
