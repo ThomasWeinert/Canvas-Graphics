@@ -38,10 +38,12 @@ if (
         $imageData,
         [
           Vectorizer\Primitive::OPTION_NUMBER_OF_SHAPES => 10, //10,
-          Vectorizer\Primitive::OPTION_OPACITY_START => 1,
           Vectorizer\Primitive::OPTION_ITERATION_START_SHAPES => 15, //15, //200,
           Vectorizer\Primitive::OPTION_ITERATION_STOP_MUTATION_FAILURES => 30, //30
-          Vectorizer\Primitive::OPTION_SHAPE_TYPE => Vectorizer\Primitive::SHAPE_RECTANGLE
+          Vectorizer\Primitive::OPTION_SHAPE_TYPE => Vectorizer\Primitive::SHAPE_TRIANGLE,
+
+          Vectorizer\Primitive::OPTION_OPACITY_START => 1.0,
+          Vectorizer\Primitive::OPTION_OPACITY_ADJUST => FALSE
         ]
       );
       $svg = new SVG\Document(

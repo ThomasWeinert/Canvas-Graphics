@@ -41,13 +41,17 @@ namespace Carica\CanvasGraphics\Vectorizer {
     ];
 
     private static $_optionDefaults = [
-      self::OPTION_NUMBER_OF_SHAPES => 1,
-      self::OPTION_OPACITY_START => 1.0,
-      self::OPTION_ITERATION_START_SHAPES => 1, //200,
-      self::OPTION_ITERATION_STOP_MUTATION_FAILURES => 1, //30
+      self::OPTION_NUMBER_OF_SHAPES => 10,
+      self::OPTION_ITERATION_START_SHAPES => 20,
+      self::OPTION_ITERATION_STOP_MUTATION_FAILURES => 10,
+      self::OPTION_SHAPE_TYPE => self::SHAPE_TRIANGLE,
 
-      self::OPTION_SHAPE_TYPE => self::SHAPE_TRIANGLE
+      self::OPTION_OPACITY_START => 1.0,
+      self::OPTION_OPACITY_ADJUST => FALSE
     ];
+    /**
+     * @var Options
+     */
     private $_options;
 
     private $_events = [
@@ -56,7 +60,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
     ];
 
     /**
-     * @var
+     * @var ImageData
      */
     private $_original;
 
@@ -106,6 +110,11 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
       $targetData = $targetContext->getImageData();
       for ($i = 0; $i < $numberOfShapes; $i++) {
+        /**
+         * @var float $lastChange
+         * @var NULL|Shape $currentShape
+         * @var NULL|Shape $shape
+         */
         $lastChange = 0;
         $currentShape = NULL;
 
@@ -135,6 +144,33 @@ namespace Carica\CanvasGraphics\Vectorizer {
           }
         }
 
+        // optimize alpha
+        if ($this->_options[self::OPTION_OPACITY_ADJUST]) {
+          $color = $currentShape->getColor();
+          $lowerAlpha = $alpha;
+          $upperAlpha = 1.0;
+          if ($lowerAlpha < $upperAlpha) {
+            $lowerAlphaChange = $lastChange;
+            $color->alpha = \round($upperAlpha * 255);
+            $currentShape->setColor($color);
+            $upperAlphaChange = $this->getDistanceChange($currentShape, $original, $targetData);
+            while ($upperAlpha - $lowerAlpha > 0.01) {
+              echo '<br/>';
+              if ($upperAlphaChange < $lowerAlphaChange) {
+                $lowerAlpha += ($upperAlpha - $lowerAlpha) / 2;
+                $color->alpha = \round($lowerAlpha * 255);
+                $currentShape->setColor($color);
+                $lowerAlphaChange = $this->getDistanceChange($currentShape, $original, $targetData);
+              } else {
+                $upperAlpha -= ($upperAlpha - $lowerAlpha) / 2;
+                $color->alpha = \round($upperAlpha * 255);
+                $currentShape->setColor($color);
+                $upperAlphaChange = $this->getDistanceChange($currentShape, $original, $targetData);
+              }
+            }
+          }
+        }
+
         if (NULL !== $currentShape) {
           $svg->append($currentShape);
           $targetData = $this->applyShape($currentShape->getColor(), $currentShape, $targetData);
@@ -158,19 +194,22 @@ namespace Carica\CanvasGraphics\Vectorizer {
     private function getDistanceChange(Shape $shape, ImageData $original, ImageData $target) {
       $distanceChange = 0;
       $count = 0;
+      $shapeColor = $shape->getColor();
       $shapePixel = [
-        $shape->getColor()->red,
-        $shape->getColor()->green,
-        $shape->getColor()->blue,
-        $shape->getColor()->alpha
+        $shapeColor->red, $shapeColor->green, $shapeColor->blue, $shapeColor->alpha
       ];
       $shape->eachPoint(
-        function(int $fi) use (&$distanceChange, &$count, $original, $target, $shapePixel) {
+        function(int $fi) use (&$distanceChange, &$count, $original, $target, $shapeColor, $shapePixel) {
           $count++;
           $originalPixel = $this->getPixel($original->data, $fi);
           $targetPixel = $this->getPixel($target->data, $fi);
           $distanceChange -= $this->getPixelDistance($originalPixel, $targetPixel);
-          $distanceChange += $this->getPixelDistance($originalPixel, $shapePixel);
+
+          $pixel = $shapePixel;
+          if ($shapeColor->alpha < 255) {
+            $pixel = Color::removeAlphaFromColor($shapeColor, $targetPixel);
+          }
+          $distanceChange += $this->getPixelDistance($originalPixel, $pixel);
         }
       );
       return $distanceChange;

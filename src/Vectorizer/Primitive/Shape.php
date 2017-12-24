@@ -15,7 +15,7 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
     /**
      * @var array
      */
-    private $_visibleOffset;
+    private $_visibleOffsets;
 
     /**
      * @var Color
@@ -57,13 +57,13 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
         $context->fillColor = [0, 255, 0, 255];
         $context->translate(-$box['left'],-$box['top']);
         $this->render($context);
-        $this->_visibleOffset = NULL;
+        $this->_visibleOffsets = NULL;
       }
       return $this->_canvasContext;
     }
 
     public function eachPoint(\Closure $callback) {
-      if (NULL === $this->_visibleOffset) {
+      if (NULL === $this->_visibleOffsets) {
         $box = $this->getBoundingBox();
         $data = $this->rasterize()->getImageData()->data;
         $sw = $box['width'];
@@ -83,12 +83,12 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
 
             $fi = 4 * ($fx + $fy * $fw); /* full (global) index */
 
-            $this->_visibleOffset[] = [$fi, $si];
+            $this->_visibleOffsets[] = [$fi, $si];
             $callback($fi, $si);
           }
         }
       } else {
-        foreach ($this->_visibleOffset as $offsets) {
+        foreach ($this->_visibleOffsets as $offsets) {
           $callback(...$offsets);
         }
       }
@@ -96,11 +96,11 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
 
     public function __clone() {
       $this->_canvasContext = NULL;
-      $this->_visibleOffset = NULL;
+      $this->_visibleOffsets = NULL;
     }
 
     public function setColor(Color $color) {
-      $this->_color = $color;
+      $this->_color = clone $color;
     }
 
     public function getColor() {
