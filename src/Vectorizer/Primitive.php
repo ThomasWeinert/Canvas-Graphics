@@ -28,6 +28,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
     public const SHAPE_RECTANGLE = 'rectangle';
     public const SHAPE_ELLIPSE = 'ellipse';
     public const SHAPE_RECTANGLE_ROTATED = 'rectangle_rotated';
+    public const SHAPE_QUADRILATERAL = 'quadrilateral';
 
     private static $_optionDefaults = [
       self::OPTION_NUMBER_OF_SHAPES => 1,
@@ -151,6 +152,8 @@ namespace Carica\CanvasGraphics\Vectorizer {
         return new Primitive\Shape\Rectangle($width, $height);
       case self::SHAPE_ELLIPSE :
         return new Primitive\Shape\Ellipse($width, $height);
+      case self::SHAPE_QUADRILATERAL:
+        return new Primitive\Shape\Quadrilateral($width, $height);
       case self::SHAPE_TRIANGLE :
       default:
         return new Primitive\Shape\Triangle($width, $height);
