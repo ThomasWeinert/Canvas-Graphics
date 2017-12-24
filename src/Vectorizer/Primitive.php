@@ -157,7 +157,6 @@ namespace Carica\CanvasGraphics\Vectorizer {
               $original, $targetData, TRUE
             );
             while ($upperAlpha - $lowerAlpha > 0.01) {
-              echo '<br/>';
               if ($upperAlphaChange < $lowerAlphaChange) {
                 $lowerAlpha += ($upperAlpha - $lowerAlpha) / 2;
                 $color->alpha = \round($lowerAlpha * 255);
