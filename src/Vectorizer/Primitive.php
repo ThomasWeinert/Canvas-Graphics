@@ -25,10 +25,20 @@ namespace Carica\CanvasGraphics\Vectorizer {
     public const OPTION_ITERATION_STOP_MUTATION_FAILURES = 'shapes_mutation_failures';
 
     public const SHAPE_TRIANGLE = 'triangle';
+    public const SHAPE_QUADRILATERAL = 'quadrilateral';
     public const SHAPE_RECTANGLE = 'rectangle';
+    public const SHAPE_CIRCLE = 'circle';
     public const SHAPE_ELLIPSE = 'ellipse';
     public const SHAPE_RECTANGLE_ROTATED = 'rectangle_rotated';
-    public const SHAPE_QUADRILATERAL = 'quadrilateral';
+
+    private const SHAPES = [
+      self::SHAPE_TRIANGLE => Shape\Triangle::class,
+      self::SHAPE_QUADRILATERAL => Shape\Quadrilateral::class,
+      self::SHAPE_RECTANGLE => Shape\Rectangle::class,
+      self::SHAPE_RECTANGLE_ROTATED => Shape\RotatedRectangle::class,
+      self::SHAPE_CIRCLE => Shape\Circle::class,
+      self::SHAPE_ELLIPSE => Shape\Ellipse::class
+    ];
 
     private static $_optionDefaults = [
       self::OPTION_NUMBER_OF_SHAPES => 1,
@@ -88,8 +98,9 @@ namespace Carica\CanvasGraphics\Vectorizer {
       if (NULL !== $this->_events['shape-create']) {
         $createShape = $this->_events['shape-create'];
       } else {
-        $createShape = function (int $width, int $height, int $index) {
-          return $this->createShape($width, $height, $index);
+        $shapeClass = self::SHAPES[$this->_options[self::OPTION_SHAPE_TYPE]] ?? Shape\Triangle::class;
+        $createShape = function (int $width, int $height, int $index) use ($shapeClass) {
+          return new $shapeClass($width, $height, $index);
         };
       }
 
@@ -142,22 +153,6 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
     public function onShapeCreate(\Closure $listener) {
       $this->_events['shape-create'] = $listener;
-    }
-
-    public function createShape(int $width, int $height, int $index) {
-      switch ($this->_options[self::OPTION_SHAPE_TYPE]) {
-      case self::SHAPE_RECTANGLE_ROTATED :
-        return new Primitive\Shape\RotatedRectangle($width, $height);
-      case self::SHAPE_RECTANGLE :
-        return new Primitive\Shape\Rectangle($width, $height);
-      case self::SHAPE_ELLIPSE :
-        return new Primitive\Shape\Ellipse($width, $height);
-      case self::SHAPE_QUADRILATERAL:
-        return new Primitive\Shape\Quadrilateral($width, $height);
-      case self::SHAPE_TRIANGLE :
-      default:
-        return new Primitive\Shape\Triangle($width, $height);
-      }
     }
 
     private function getDistanceChange(Shape $shape, ImageData $original, ImageData $target) {
