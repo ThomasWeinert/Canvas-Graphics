@@ -3,6 +3,7 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
 
   use Carica\CanvasGraphics\Canvas\GD\Image;
   use Carica\CanvasGraphics\Canvas\CanvasContext2D;
+  use Carica\CanvasGraphics\Canvas\ImageData;
   use Carica\CanvasGraphics\Color;
   use Carica\CanvasGraphics\SVG\Appendable;
 
@@ -29,6 +30,14 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
      * @var int
      */
     private $_imageHeight;
+    /**
+     * @var array
+     */
+    private $_distanceBuffer = [
+      'original' => NULL,
+      'target' => NULL,
+      'distance' => 0,
+    ];
 
     abstract public function render(CanvasContext2D $canvas);
 
@@ -94,9 +103,98 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
       }
     }
 
+    public function reducePoints(\Closure $callback, $initial = NULL) {
+      if (NULL === $this->_visibleOffsets) {
+        $distanceChange = $initial;
+        $this->eachPoint(
+          function(...$offsets) use (&$distanceChange, $callback) {
+            $distanceChange = $callback($distanceChange, ...$offsets);
+          }
+        );
+        return $distanceChange;
+      }
+      return \array_reduce(
+        $this->_visibleOffsets,
+        function($carry, $offsets) use ($callback) {
+          $result = $callback($carry, ...$offsets);
+          return $result;
+        },
+        $initial
+      );
+    }
+
+    public function getDistanceChange(
+      ImageData $original, ImageData $target, bool $useCache = FALSE
+    ): float {
+      $shapeColor = $this->getColor();
+      $shapePixel = [
+        $shapeColor->red, $shapeColor->green, $shapeColor->blue, $shapeColor->alpha
+      ];
+      if (
+        $useCache &&
+        $this->_distanceBuffer['original'] === $original &&
+        $this->_distanceBuffer['target'] === $target
+      ) {
+        $distanceTarget = $this->_distanceBuffer['distance'];
+        $distanceShape = 0;
+        $this->eachPoint(
+          function(int $fi) use (&$distanceShape, $original, $target, $shapeColor, $shapePixel) {
+            $originalPixel = $this->getPixel($original->data, $fi);
+            $pixel = $shapePixel;
+            if ($shapeColor->alpha < 255) {
+              $targetPixel = $this->getPixel($target->data, $fi);
+              $pixel = Color::removeAlphaFromColor($shapeColor, $targetPixel);
+            }
+            $distanceShape += $this->getPixelDistance($originalPixel, $pixel);
+          }
+        );
+      } else {
+        $distanceTarget = 0;
+        $distanceShape = 0;
+        $this->eachPoint(
+          function(int $fi) use (&$distanceTarget, &$distanceShape, $original, $target, $shapeColor, $shapePixel) {
+            $originalPixel = $this->getPixel($original->data, $fi);
+            $targetPixel = $this->getPixel($target->data, $fi);
+            $distanceTarget += $this->getPixelDistance($originalPixel, $targetPixel);
+
+            $pixel = $shapePixel;
+            if ($shapeColor->alpha < 255) {
+              $pixel = Color::removeAlphaFromColor($shapeColor, $targetPixel);
+            }
+            $distanceShape += $this->getPixelDistance($originalPixel, $pixel);
+          }
+        );
+        $this->_distanceBuffer = [
+          'original' => $original,
+          'target' => $target,
+          'distance' => $distanceTarget
+        ];
+      }
+      return -$distanceTarget + $distanceShape;
+    }
+
+    private function getPixel(array $data, $index): array {
+      return [
+        $data[$index], $data[$index + 1], $data[$index + 2], $data[$index + 3]
+      ];
+    }
+
+    public function getPixelDistance($a, $b) {
+      return (
+          \abs($a[0] - $b[0]) +
+          \abs($a[1] - $b[1]) +
+          \abs($a[2] - $b[2])
+        ) / (255 * 3);
+    }
+
     public function __clone() {
       $this->_canvasContext = NULL;
       $this->_visibleOffsets = NULL;
+      $this->_distanceBuffer = [
+        'original' => NULL,
+        'target' => NULL,
+        'distance' => 0
+      ];
     }
 
     public function setColor(Color $color) {

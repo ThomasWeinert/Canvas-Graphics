@@ -115,15 +115,15 @@ namespace Carica\CanvasGraphics\Vectorizer {
          * @var NULL|Shape $currentShape
          * @var NULL|Shape $shape
          */
-        $lastChange = 0;
+        $lastChange = NULL;
         $currentShape = NULL;
 
         // create n Shapes, compare them an keep the best
         for ($j = 0; $j < $startShapeCount; $j++) {
           $shape = $createShape($width, $height, $i);
           $shape->setColor($this->computeColor($shape, $original, $targetData, $alpha));
-          $distanceChange = $this->getDistanceChange($shape, $original, $targetData);
-          if ($distanceChange < $lastChange) {
+          $distanceChange = $shape->getDistanceChange($original, $targetData);
+          if (NULL === $lastChange || $distanceChange < $lastChange) {
             $lastChange = $distanceChange;
             $currentShape = $shape;
           }
@@ -134,8 +134,8 @@ namespace Carica\CanvasGraphics\Vectorizer {
         while ($allowedMutationFailures > $failureCount) {
           $shape = $currentShape->mutate();
           $shape->setColor($this->computeColor($shape, $original, $targetData, $alpha));
-          $distanceChange = $this->getDistanceChange($shape, $original, $targetData);
-          if ($distanceChange < $lastChange) {
+          $distanceChange = $shape->getDistanceChange($original, $targetData);
+          if ($lastChange - $distanceChange > 0.000001) {
             $lastChange = $distanceChange;
             $currentShape = $shape;
             $failureCount = 0;
@@ -153,19 +153,25 @@ namespace Carica\CanvasGraphics\Vectorizer {
             $lowerAlphaChange = $lastChange;
             $color->alpha = \round($upperAlpha * 255);
             $currentShape->setColor($color);
-            $upperAlphaChange = $this->getDistanceChange($currentShape, $original, $targetData);
+            $upperAlphaChange = $currentShape->getDistanceChange(
+              $original, $targetData, TRUE
+            );
             while ($upperAlpha - $lowerAlpha > 0.01) {
               echo '<br/>';
               if ($upperAlphaChange < $lowerAlphaChange) {
                 $lowerAlpha += ($upperAlpha - $lowerAlpha) / 2;
                 $color->alpha = \round($lowerAlpha * 255);
                 $currentShape->setColor($color);
-                $lowerAlphaChange = $this->getDistanceChange($currentShape, $original, $targetData);
+                $lowerAlphaChange = $currentShape->getDistanceChange(
+                  $original, $targetData, TRUE
+                );
               } else {
                 $upperAlpha -= ($upperAlpha - $lowerAlpha) / 2;
                 $color->alpha = \round($upperAlpha * 255);
                 $currentShape->setColor($color);
-                $upperAlphaChange = $this->getDistanceChange($currentShape, $original, $targetData);
+                $upperAlphaChange = $currentShape->getDistanceChange(
+                  $original, $targetData, TRUE
+                );
               }
             }
           }
@@ -189,44 +195,6 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
     public function onShapeCreate(\Closure $listener) {
       $this->_events['shape-create'] = $listener;
-    }
-
-    private function getDistanceChange(Shape $shape, ImageData $original, ImageData $target) {
-      $distanceChange = 0;
-      $count = 0;
-      $shapeColor = $shape->getColor();
-      $shapePixel = [
-        $shapeColor->red, $shapeColor->green, $shapeColor->blue, $shapeColor->alpha
-      ];
-      $shape->eachPoint(
-        function(int $fi) use (&$distanceChange, &$count, $original, $target, $shapeColor, $shapePixel) {
-          $count++;
-          $originalPixel = $this->getPixel($original->data, $fi);
-          $targetPixel = $this->getPixel($target->data, $fi);
-          $distanceChange -= $this->getPixelDistance($originalPixel, $targetPixel);
-
-          $pixel = $shapePixel;
-          if ($shapeColor->alpha < 255) {
-            $pixel = Color::removeAlphaFromColor($shapeColor, $targetPixel);
-          }
-          $distanceChange += $this->getPixelDistance($originalPixel, $pixel);
-        }
-      );
-      return $distanceChange;
-    }
-
-    private function getPixel(array $data, $index): array {
-      return [
-        $data[$index], $data[$index + 1], $data[$index + 2], $data[$index + 3]
-      ];
-    }
-
-    public function getPixelDistance($a, $b) {
-      return (
-        \abs($a[0] - $b[0]) +
-        \abs($a[1] - $b[1]) +
-        \abs($a[2] - $b[2])
-      ) / (255 * 3);
     }
 
     private function applyShape(Color $color, Shape $shape, ImageData $target) {
