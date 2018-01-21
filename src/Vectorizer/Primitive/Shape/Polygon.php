@@ -9,7 +9,10 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
 
     private $_points;
     private $_box;
-    private $_maxDistance = 50;
+
+    private $_minWidth = 5;
+    private $_minHeight = 5;
+    private $_minRatio = 0.1;
 
     public function appendTo(Document $svg): void {
       $parent = $svg->getShapesNode();
@@ -47,8 +50,7 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
 
     public function __construct(int $width, int $height, int $corners) {
       parent::__construct($width, $height);
-      $this->_points = $this->_createPoints($width, $height, $corners);
-      $this->getBoundingBox();
+      $this->_points = $this->getMutatedPoints($this->_createPoints($width, $height, $corners));
     }
 
     public function render(CanvasContext2D $context): void {
@@ -63,40 +65,62 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
 
     public function mutate():Shape {
       $mutation = clone $this;
-      $points = $this->_points;
-      $index = \random_int(0, \count($points) - 1);
-      $mutation->_points[$index] = $this->_createNextPoint(...$points[$index]);
+      $mutation->_points = $this->getMutatedPoints($this->_points);
       $mutation->_box = NULL;
       return $mutation;
     }
 
+    private function getMutatedPoints(array $points): array {
+      $limit = 0;
+      do {
+        if (++$limit > 100) {
+          return $points;
+        }
+        $mutatedPoints = $points;
+        $index = \random_int(0, \count($mutatedPoints) - 1);
+        $mutatedPoints[$index] = $this->_createNextPoint(...$mutatedPoints[$index]);
+        $boundingBox = $this->getBoxForPoints($mutatedPoints);
+      } while (
+        $boundingBox['width'] < $this->_minWidth ||
+        $boundingBox['height'] < $this->_minHeight ||
+        ($boundingBox['width'] / $boundingBox['height']) < $this->_minRatio ||
+        ($boundingBox['height'] / $boundingBox['width']) < $this->_minRatio ||
+        $this->isOutsideImage($boundingBox)
+      );
+      return $mutatedPoints;
+    }
+
     public function getBoundingBox():array {
       if (NULL === $this->_box) {
-        $boundingBox = \array_reduce(
-          $this->_points,
-          function($carry, $point) {
-            [$x, $y] = $point;
-            if (!isset($carry['top']) || $carry['top'] > $y) {
-              $carry['top'] = $y;
-            }
-            if (!isset($carry['right']) || $carry['right'] < $x) {
-              $carry['right'] = $x;
-            }
-            if (!isset($carry['bottom']) || $carry['bottom'] < $y) {
-              $carry['bottom'] =$y;
-            }
-            if (!isset($carry['left']) || $carry['left'] > $x) {
-              $carry['left'] = $x;
-            }
-            return $carry;
-          },
-          ['top' => NULL, 'right'  => NULL, 'bottom' => NULL, 'left' => NULL]
-        );
-        $boundingBox['width'] = $boundingBox['right'] - $boundingBox['left'];
-        $boundingBox['height'] = $boundingBox['bottom'] - $boundingBox['top'];
-        $this->_box = $boundingBox;
+        $this->_box = $this->getBoxForPoints($this->_points);
       }
       return $this->_box;
+    }
+
+    private function getBoxForPoints(array $points): array {
+      $boundingBox = \array_reduce(
+        $points,
+        function ($carry, $point) {
+          [$x, $y] = $point;
+          if (!isset($carry['top']) || $carry['top'] > $y) {
+            $carry['top'] = $y;
+          }
+          if (!isset($carry['right']) || $carry['right'] < $x) {
+            $carry['right'] = $x;
+          }
+          if (!isset($carry['bottom']) || $carry['bottom'] < $y) {
+            $carry['bottom'] = $y;
+          }
+          if (!isset($carry['left']) || $carry['left'] > $x) {
+            $carry['left'] = $x;
+          }
+          return $carry;
+        },
+        ['top' => NULL, 'right' => NULL, 'bottom' => NULL, 'left' => NULL]
+      );
+      $boundingBox['width'] = $boundingBox['right'] - $boundingBox['left'];
+      $boundingBox['height'] = $boundingBox['bottom'] - $boundingBox['top'];
+      return $boundingBox;
     }
 
     private function _createPoints(int $width, int $height, int $count) {

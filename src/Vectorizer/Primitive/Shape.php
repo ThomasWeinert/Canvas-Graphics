@@ -39,6 +39,9 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
       'distance' => 0,
     ];
 
+    protected $_minDistance = 5;
+    protected $_maxDistance = 20;
+
     abstract public function render(CanvasContext2D $canvas);
 
     abstract public function mutate();
@@ -75,10 +78,10 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
       if (NULL === $this->_visibleOffsets) {
         $box = $this->getBoundingBox();
         $data = $this->rasterize()->getImageData()->data;
-        $sw = $box['width'];
-        $sh = $box['height'];
         $fw = $this->_imageWidth;
         $fh = $this->_imageHeight;
+        $sw = $box['width'];
+        $sh = $box['height'];
         for ($sy = 0; $sy < $sh; $sy++) {
           $fy = $sy + $box['top'];
           if ($fy < 0 || $fy >= $fh) { continue; } /* outside of the large canvas (vertically) */
@@ -87,8 +90,8 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
             $fx = $box['left'] + $sx;
             if ($fx < 0 || $fx >= $fw) { continue; } /* outside of the large canvas (horizontally) */
 
-            $si = 4 * ($sx + $sy*$sw); /* shape (local) index */
-            if (!isset($data[$si]) || $data[$si+3] === 0) { continue; } /* only where drawn */
+            $si = 4 * ($sx + ($sy * $sw)); /* shape (local) index */
+            if ($data[$si+3] === 0) { continue; } /* only where drawn */
 
             $fi = 4 * ($fx + $fy * $fw); /* full (global) index */
 
@@ -116,8 +119,7 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
       return \array_reduce(
         $this->_visibleOffsets,
         function($carry, $offsets) use ($callback) {
-          $result = $callback($carry, ...$offsets);
-          return $result;
+          return $callback($carry, ...$offsets);
         },
         $initial
       );
@@ -206,6 +208,15 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
         $this->_color = Color::createGray(0);
       }
       return $this->_color;
+    }
+
+    protected function isOutsideImage($boundingBox) {
+      return (
+        $boundingBox['bottom'] < 0 ||
+        $boundingBox['right'] < 0 ||
+        $boundingBox['top'] >= $this->_imageHeight ||
+        $boundingBox['left'] >= $this->_imageWidth
+      );
     }
   }
 }

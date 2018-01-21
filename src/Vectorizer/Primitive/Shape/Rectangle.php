@@ -13,7 +13,6 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
     private $_bottom;
 
     private $_box;
-    private $_maxDistance = 20;
 
     public function appendTo(Document $svg): void {
       $parent = $svg->getShapesNode();

@@ -55,8 +55,12 @@ namespace Carica\CanvasGraphics\Vectorizer {
     private $_options;
 
     private $_events = [
+      'before-create-shapes' => NULL,
       'shape-create' => NULL,
-      'shape-added' => NULL
+      'shape-improved' => NULL,
+      'shape-added' => NULL,
+      'shape-discarded' => NULL,
+      'after-create-shapes' => NULL,
     ];
 
     /**
@@ -82,6 +86,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $height = $original->height;
 
       $palette = \array_values(\iterator_to_array(new ColorThief($original, 2)));
+      $backgroundColor = $palette[0];
 
       $parent = $svg->getShapesNode();
       $document = $parent->ownerDocument;
@@ -91,12 +96,12 @@ namespace Carica\CanvasGraphics\Vectorizer {
         $document->createElementNS(self::XMLNS_SVG, 'path'),
         $parent
       );
-      $background->setAttribute('fill', $palette[0]->toHexString());
+      $background->setAttribute('fill', $backgroundColor->toHexString());
       $background->setAttribute('d', sprintf('M0 0h%dv%dH0z', $width, $height));
 
       $target = Image::create($width, $height);
       $targetContext = $target->getContext('2d');
-      $targetContext->fillColor = $palette[0];
+      $targetContext->fillColor = $backgroundColor;
       $targetContext->fillRect(0,0, $width, $height);
 
       if (NULL !== $this->_events['shape-create']) {
@@ -109,34 +114,44 @@ namespace Carica\CanvasGraphics\Vectorizer {
       }
 
       $targetData = $targetContext->getImageData();
+
+      if (isset($this->_events['before-create-shapes'])) {
+        $this->_events['before-create-shapes']($numberOfShapes);
+      }
       for ($i = 0; $i < $numberOfShapes; $i++) {
         /**
-         * @var float $lastChange
+         * @var float $currentDistanceChange
          * @var NULL|Shape $currentShape
          * @var NULL|Shape $shape
          */
-        $lastChange = NULL;
+        $currentDistanceChange = NULL;
         $currentShape = NULL;
 
         // create n Shapes, compare them an keep the best
         for ($j = 0; $j < $startShapeCount; $j++) {
           $shape = $createShape($width, $height, $i);
-          $shape->setColor($this->computeColor($shape, $original, $targetData, $alpha));
+          $shape->setColor($this->computeColor($shape, $original, $targetData, $backgroundColor, $alpha));
           $distanceChange = $shape->getDistanceChange($original, $targetData);
-          if (NULL === $lastChange || $distanceChange < $lastChange) {
-            $lastChange = $distanceChange;
+          if (NULL === $currentDistanceChange || $distanceChange < $currentDistanceChange) {
+            $currentDistanceChange = $distanceChange;
             $currentShape = $shape;
           }
         }
 
         // try to improve the shape
         $failureCount = 0;
+        $mutations = 0;
         while ($allowedMutationFailures > $failureCount) {
           $shape = $currentShape->mutate();
-          $shape->setColor($this->computeColor($shape, $original, $targetData, $alpha));
+          $shape->setColor($this->computeColor($shape, $original, $targetData, $backgroundColor, $alpha));
           $distanceChange = $shape->getDistanceChange($original, $targetData);
-          if ($lastChange - $distanceChange > 0.000001) {
-            $lastChange = $distanceChange;
+          $isImproved = $currentDistanceChange - $distanceChange > 0.001;
+          $mutations++;
+          if ($isImproved) {
+            if (isset($this->_events['shape-improved'])) {
+              $this->_events['shape-improved']($i, $mutations, $failureCount, $distanceChange);
+            }
+            $currentDistanceChange = $distanceChange;
             $currentShape = $shape;
             $failureCount = 0;
           } else {
@@ -150,7 +165,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
           $lowerAlpha = $alpha;
           $upperAlpha = 1.0;
           if ($lowerAlpha < $upperAlpha) {
-            $lowerAlphaChange = $lastChange;
+            $lowerAlphaChange = $currentDistanceChange;
             $color->alpha = \round($upperAlpha * 255);
             $currentShape->setColor($color);
             $upperAlphaChange = $currentShape->getDistanceChange(
@@ -177,23 +192,43 @@ namespace Carica\CanvasGraphics\Vectorizer {
         }
 
         if (NULL !== $currentShape) {
-          $svg->append($currentShape);
-          $targetData = $this->applyShape($currentShape->getColor(), $currentShape, $targetData);
-          if (isset($this->_events['shape-added'])) {
-            $this->_events['shape-added'](
-              $this->getComparator()->getScore($original, $targetData), $svg
-            );
+          if ($currentDistanceChange < -0.01) {
+            $svg->append($currentShape);
+            $targetData = $this->applyShape($currentShape->getColor(), $currentShape, $targetData);
+            if (isset($this->_events['shape-added'])) {
+              $this->_events['shape-added']($i, $shape, $targetData);
+            }
+          } else {
+            if (isset($this->_events['shape-discarded'])) {
+              $this->_events['shape-discarded']($i, $shape, $currentDistanceChange);
+            }
           }
         }
       }
+    }
+
+    public function onBeforeCreateShapes(\Closure $listener) {
+      $this->_events['before-create-shapes'] = $listener;
+    }
+
+    public function onAfterCreateShapes(\Closure $listener) {
+      $this->_events['after-create-shapes'] = $listener;
+    }
+
+    public function onShapeCreate(\Closure $listener) {
+      $this->_events['shape-create'] = $listener;
+    }
+
+    public function onShapeImproved(\Closure $listener) {
+      $this->_events['shape-improved'] = $listener;
     }
 
     public function onShapeAdded(\Closure $listener) {
       $this->_events['shape-added'] = $listener;
     }
 
-    public function onShapeCreate(\Closure $listener) {
-      $this->_events['shape-create'] = $listener;
+    public function onShapeDiscarded(\Closure $listener) {
+      $this->_events['shape-discarded'] = $listener;
     }
 
     private function applyShape(Color $color, Shape $shape, ImageData $target) {
@@ -203,8 +238,8 @@ namespace Carica\CanvasGraphics\Vectorizer {
           if ($color['alpha'] < 255) {
             $factor = (float)$color['alpha'] / 255.0;
             $target->data[$fi] = $target->data[$fi] * (1 - $factor) + $color->red * $factor;
-            $target->data[$fi + 1] = $target->data[$fi] * (1 - $factor) + $color->red * $factor;
-            $target->data[$fi + 2] = $target->data[$fi] * (1 - $factor) + $color->red * $factor;
+            $target->data[$fi + 1] = $target->data[$fi] * (1 - $factor) + $color->green * $factor;
+            $target->data[$fi + 2] = $target->data[$fi] * (1 - $factor) + $color->blue * $factor;
           } else {
             $target->data[$fi] = $color->red;
             $target->data[$fi + 1] = $color->green;
@@ -215,8 +250,10 @@ namespace Carica\CanvasGraphics\Vectorizer {
       return $target;
     }
 
-    private function computeColor(Shape $shape, ImageData $original, ImageData $target, float $alpha = 1) {
-      $color = [0,0,0, $alpha * 255];
+    private function computeColor(
+      Shape $shape, ImageData $original, ImageData $target, Color $backgroundColor, float $alpha = 1
+    ) {
+      $color = [0, 0, 0, $alpha * 255];
       $count = 0;
       $shape->eachPoint(
         function(int $fi) use (&$color, &$count, $original) {
@@ -229,7 +266,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
       if ($count > 0) {
         return Color::create($color[0] / $count, $color[1] / $count, $color[2] / $count, $alpha * 255);
       }
-      return Color::createGray(255, $alpha * 255);
+      return $backgroundColor;
     }
 
     private function getComparator() {

@@ -1,0 +1,243 @@
+<html>
+<head>
+  <title>Upload + Convert</title>
+  <style type="text/css">
+    body {
+      background-color: black;
+      color: white;
+      font-family: sans-serif;
+    }
+    form {
+      margin: 0 10px;
+    }
+    form ul {
+      list-style: none;
+      display: inline-block;
+    }
+    form ul li {
+      display: inline-block;
+    }
+    form .fields {
+      display: flex;
+    }
+    form .field {
+      padding: 10px;
+    }
+    form .field label {
+      display: block;
+    }
+    form button {
+      font-size: 2em;
+      border: 1px solid darkgreen;
+      border-radius: 5px;
+      background: lightgreen;
+    }
+    .images {
+      display: flex;
+    }
+    .images img {
+      width: 300px;
+      margin: auto;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    .images img[src=""] {
+      visibility: hidden;
+    }
+    textarea {
+      width: 100%;
+      height: 600px;
+    }
+    .xml {
+      margin: 5px;
+      padding: 5px;
+      border: 1px solid black;
+      white-space: pre-wrap;
+      font-family: "Fira Code Retina", monospace;
+      font-size: 8px;
+    }
+  </style>
+</head>
+<body>
+<form action="service.php" method="post" enctype="multipart/form-data" onsubmit="uploadFile(event, this);">
+  <input type="hidden" name="incremental_result" value="1"/>
+  <div class="fields">
+    <div class="field">
+      <label>Bitmap file:</label>
+      <input type="file" name="bitmap" onchange="onFileChange(this.files);">
+    </div>
+    <div class="field">
+      <label>Shapes:</label>
+      <input type="number" name="number_of_shapes" min="1" max="2000" step="1" value="10">
+    </div>
+    <div class="field">
+      <label>Shape Type:</label>
+      <select name="shape_type">
+        <option value="triangle">triangle</option>
+        <option value="quadrilateral">quadrilateral</option>
+        <option value="rectangle">rectangle</option>
+        <option value="rectangle_rotated">rectangle rotated</option>
+        <option value="circle">circle</option>
+        <option value="ellipse">ellipse</option>
+      </select>
+    </div>
+    <div class="field">
+      <label title="Alpha transparency of the shapes.">Alpha Transparency:</label>
+      <input type="number" name="alpha_transparency" min="0.5" max="1.0" step="0.1" value="0.7">
+    </div>
+    <div class="field">
+      <label title="Adjust Alpha transparency of the shapes.">Adjust Alpha:</label>
+      <input type="checkbox" name="adjust_alpha_transparency" value="1">
+    </div>
+    <div class="field">
+      <label title="Start with the given count of random shapes.">Random Start Shapes:</label>
+      <input type="number" name="random_start_shapes" min="1" max="100" step="1" value="40">
+    </div>
+    <div class="field">
+      <label title="Stop after the given count of failures (shape score not increasing).">Stop Failure Limit:</label>
+      <input type="number" name="mutation_failure_limit" min="1" max="50" step="1" value="10">
+    </div>
+    <div class="field">
+      <button type="submit">START</button>
+    </div>
+  </div>
+  <hr>
+  <ul>
+    <li>Bitmap: <span class="bitmap_file_size"></span></li>
+    <li>SVG: <span class="svg_file_size"></span> </li>
+    <li>Time: <span class="conversion_time"></span> </li>
+    <li>Shape: <span class="current_shape"></span> </li>
+    <li>Added: <span class="shapes_added"></span> </li>
+    <li>Discarded: <span class="shapes_discarded"></span> </li>
+  </ul>
+</form>
+<section class="images">
+  <img class="bitmap" src=""/>
+  <img class="svg" src=""/>
+  <img class="svg-shapes"src=""/>
+</section>
+<section class="xml"></section>
+<script type="text/javascript">
+  function bytesToSize(bytes) {
+    var sizes = ['Bytes', 'KB', 'MB'];
+    if (bytes == 0) return 'n/a';
+    var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+    return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+  }
+
+  function onFileChange(files) {
+    var file = files[0];
+    if (!file.type.startsWith('image/')){ return; }
+
+    document.querySelector('span.bitmap_file_size').textContent = bytesToSize(file.size);
+    document.querySelector('span.svg_file_size').textContent = '';
+    document.querySelector('span.current_shape').textContent = '0';
+    document.querySelector('span.shapes_added').textContent = '0';
+    document.querySelector('span.shapes_discarded').textContent = '0';
+    document.querySelector('img.svg').src = '';
+    document.querySelector('img.svg-shapes').src = '';
+
+    var reader = new FileReader();
+    reader.onload = (
+      function(aImg) {
+        return function(e) {
+          aImg.src = e.target.result;
+        };
+      })(document.querySelector('img.bitmap'));
+    reader.readAsDataURL(file);
+  }
+
+  function uploadFile(event, form) {
+    var interval;
+    var xhr = new XMLHttpRequest();
+    var fd = new FormData(form);
+
+    var last_index = 0;
+    var buffer = '';
+
+    onFileChange(document.querySelector('input[type=file]').files);
+
+    document.querySelector('span.svg_file_size').textContent = '';
+    document.querySelector('span.current_shape').textContent = '0';
+    document.querySelector('span.shapes_added').textContent = '0';
+    document.querySelector('span.shapes_discarded').textContent = '0';
+    document.querySelector('img.svg').src = '';
+    document.querySelector('img.svg-shapes').src = '';
+
+    var shapesAdded = 0, shapesDiscarded = 0;
+
+    function handleMessage(message) {
+      var data = JSON.parse(message);
+      console.log(data);
+      if (data.time) {
+        document.querySelector('span.conversion_time').textContent = data.time;
+      }
+      if (data.shape) {
+        document.querySelector('span.current_shape').textContent = data.shape;
+      }
+      if (data.event) {
+        switch (data.event) {
+          case 'shape-added':
+            document.querySelector('span.shapes_added').textContent = (++shapesAdded).toString();
+            break;
+          case 'shape-discarded':
+            document.querySelector('span.shapes_discarded').textContent = (++shapesDiscarded).toString();
+            break;
+        }
+      }
+      if (data.svg) {
+        document.querySelector('img.svg').src = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(data.svg);
+        document.querySelector('span.svg_file_size').textContent = bytesToSize(data.svg.length);
+
+        var svg = (new DOMParser()).parseFromString(data.svg, 'text/xml');
+        var namespaceResolver = {
+          _namespaces : {'svg': 'http://www.w3.org/2000/svg'},
+          lookupNamespaceURI : function(prefix) {
+            return this._namespaces[prefix];
+          }
+        };
+        var node;
+        var nodes;
+        var svg_blur_removed;
+        nodes = svg.evaluate('//svg:g[@filter]', svg, namespaceResolver, XPathResult.ANY_TYPE, null);
+        if (nodes) {
+          if (node = nodes.iterateNext()) {
+            node.setAttribute('filter', null);
+          }
+        }
+        svg_blur_removed = (new XMLSerializer()).serializeToString(svg);
+        document.querySelector('img.svg-shapes').src = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg_blur_removed);
+      }
+    }
+
+    function parse() {
+      var curr_index = xhr.responseText.length;
+      if (last_index === curr_index) return; // No new data
+      var s = buffer + xhr.responseText.substring(last_index, curr_index);
+      last_index = curr_index;
+      if (s === '') {
+        return;
+      }
+      var offset = 0;
+      var p = s.indexOf("\n");
+      while (p >= 0) {
+        handleMessage(s.substring(offset, p));
+        offset = p + 1;
+        p = s.indexOf("\n", offset);
+      }
+      buffer = s.substring(offset, s.length);
+    }
+
+    event.preventDefault();
+    xhr.open("POST", form.action, true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === xhr.DONE && interval) {
+        clearInterval(interval);
+        parse();
+      }
+    };
+    interval = setInterval(parse, 500);
+    xhr.send(fd);
+  }
+</script>
+</body>
+</html>
