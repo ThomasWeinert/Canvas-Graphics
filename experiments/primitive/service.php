@@ -57,7 +57,8 @@ if (
       $emit = function ($event, array $values = []) use ($start) {
         $data= [
           'event' => $event,
-          'time' => number_format(microtime(TRUE) - $start, 2).'s'
+          'time' => number_format(microtime(TRUE) - $start, 2).'s',
+          'memory' => memory_get_usage (TRUE)
         ];
         echo json_encode(
           array_merge($data, $values)

@@ -82,7 +82,7 @@
     </div>
     <div class="field">
       <label title="Alpha transparency of the shapes.">Alpha Transparency:</label>
-      <input type="number" name="alpha_transparency" min="0.5" max="1.0" step="0.1" value="0.7">
+      <input type="number" name="alpha_transparency" min="0.5" max="1.0" step="0.1" value="1">
     </div>
     <div class="field">
       <label title="Adjust Alpha transparency of the shapes.">Adjust Alpha:</label>
@@ -105,6 +105,7 @@
     <li>Bitmap: <span class="bitmap_file_size"></span></li>
     <li>SVG: <span class="svg_file_size"></span> </li>
     <li>Time: <span class="conversion_time"></span> </li>
+    <li>Memory: <span class="conversion_memory"></span> </li>
     <li>Shape: <span class="current_shape"></span> </li>
     <li>Added: <span class="shapes_added"></span> </li>
     <li>Discarded: <span class="shapes_discarded"></span> </li>
@@ -130,6 +131,8 @@
 
     document.querySelector('span.bitmap_file_size').textContent = bytesToSize(file.size);
     document.querySelector('span.svg_file_size').textContent = '';
+    document.querySelector('span.conversion_time').textContent = '';
+    document.querySelector('span.conversion_memory').textContent = '';
     document.querySelector('span.current_shape').textContent = '0';
     document.querySelector('span.shapes_added').textContent = '0';
     document.querySelector('span.shapes_discarded').textContent = '0';
@@ -157,6 +160,8 @@
     onFileChange(document.querySelector('input[type=file]').files);
 
     document.querySelector('span.svg_file_size').textContent = '';
+    document.querySelector('span.conversion_time').textContent = '';
+    document.querySelector('span.conversion_memory').textContent = '';
     document.querySelector('span.current_shape').textContent = '0';
     document.querySelector('span.shapes_added').textContent = '0';
     document.querySelector('span.shapes_discarded').textContent = '0';
@@ -170,6 +175,9 @@
       console.log(data);
       if (data.time) {
         document.querySelector('span.conversion_time').textContent = data.time;
+      }
+      if (data.memory) {
+        document.querySelector('span.conversion_memory').textContent = bytesToSize(data.memory);
       }
       if (data.shape) {
         document.querySelector('span.current_shape').textContent = data.shape;
