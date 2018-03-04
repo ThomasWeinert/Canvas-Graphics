@@ -92,12 +92,13 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $document = $parent->ownerDocument;
 
       /** @var \DOMElement $background */
-      $background = $parent->parentNode->insertBefore(
-        $document->createElementNS(self::XMLNS_SVG, 'path'),
-        $parent
+      $background = $parent->appendChild(
+        $document->createElementNS(self::XMLNS_SVG, 'path')
       );
       $background->setAttribute('fill', $backgroundColor->toHexString());
-      $background->setAttribute('d', sprintf('M0 0h%dv%dH0z', $width, $height));
+      $background->setAttribute(
+        'd', sprintf('M%d %dh%dv%dH0z', -$width, -$height, $width * 3, $height * 3)
+      );
 
       $target = Image::create($width, $height);
       $targetContext = $target->getContext('2d');
