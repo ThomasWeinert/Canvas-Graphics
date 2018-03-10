@@ -4,49 +4,51 @@ namespace Carica\CanvasGraphics {
 
   use PHPUnit\Framework\TestCase;
 
+  /**
+   * @coversDefaultClass \Carica\CanvasGraphics\Color
+   */
   class ColorTest extends TestCase {
 
-    public function testConstructor() {
+    /**
+     * @covers ::__construct
+     * @covers ::__toString
+     */
+    public function testConstructor(): void {
       $color = new Color(1, 2, 3, 4);
-      $this->assertEquals('#01020304', $color->toHexString(TRUE));
+      $this->assertEquals('rgba(1, 2, 3, 4), hsl(0.62, 1.00, 0.01)', (string)$color);
     }
 
     /**
+     *
+     * @covers ::computeDistance
      * @param $expectedDistance
      * @param array|Color $colorOne
      * @param array|Color $colorTwo
-     * @dataProvider provideColorsAndDistances
+     *
+     * @testWith
+     *   [0, [0,0,0], [0,0,0]]
+     *   [255, [0,0,0], [255,255,255]]
+     *   [120, [0,0,0], [255,0,0]]
      */
-    public function testComputeDistance($expectedDistance, $colorOne, $colorTwo) {
+    public function testComputeDistance($expectedDistance, $colorOne, $colorTwo): void {
       $distance = Color::computeDistance(Color::createFromArray($colorOne), Color::createFromArray($colorTwo));
       $this->assertEquals($expectedDistance, round($distance * 255));
     }
 
-    public static function provideColorsAndDistances() {
-      return [
-        'black and black' => [0, [0,0,0], [0,0,0]],
-        'black and white' => [255, [0,0,0], [255,255,255]],
-        'black and red' => [120, [0,0,0], [255,0,0]]
-      ];
-    }
-
-
     /**
+     * @covers ::removeAlphaFromColor
+     *
      * @param string $expected
      * @param array|Color $color
      * @param null|Color $background
-     * @dataProvider provideColorsForMerging
+     *
+     * @testWith
+     *   ["#f00", [255, 0, 0, 255]]
+     *   ["#ff8080", [255, 0, 0, 127]]
      */
-    public function testRemoveAlphaFromColor($expected, $color, $background = NULL) {
+    public function testRemoveAlphaFromColor($expected, $color, $background = NULL): void {
       $color = Color::removeAlphaFromColor(Color::createFromArray($color), $background);
       $this->assertEquals($expected, $color->toHexString());
-    }
-
-    public static function provideColorsForMerging() {
-      return [
-        'red without alpha on default (white)' => ['#f00', [255, 0, 0, 255]],
-        'red with alpha 127 on default white' => ['#ff8080', [255, 0, 0, 127]]
-      ];
     }
   }
 }

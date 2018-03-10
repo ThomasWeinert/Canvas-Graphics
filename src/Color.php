@@ -45,7 +45,7 @@ namespace Carica\CanvasGraphics {
     /**
      * @return string
      */
-    public function __toString() {
+    public function __toString(): string {
       $hsl = $this->toHSL();
       return sprintf(
         'rgba(%d, %d, %d, %d), hsl(%01.2f, %01.2f, %01.2f)',
@@ -63,7 +63,7 @@ namespace Carica\CanvasGraphics {
      * @param bool $withAlpha
      * @return string
      */
-    public function toHexString($withAlpha = FALSE): string {
+    public function toHexString(bool $withAlpha = FALSE): string {
       if ($withAlpha) {
         return sprintf(
           '#%02x%02x%02x%02x',
@@ -124,6 +124,7 @@ namespace Carica\CanvasGraphics {
      * @param int $blue
      * @param int $alpha
      * @return Color
+     * @throws \LogicException
      */
     public static function create(int $red, int $green, int $blue, int $alpha = 255): self {
       return new self($red, $green, $blue, $alpha);
@@ -135,6 +136,7 @@ namespace Carica\CanvasGraphics {
      * @param int $value
      * @param int $alpha
      * @return Color
+     * @throws \LogicException
      */
     public static function createGray(int $value, int $alpha = 255): self {
       return new self($value, $value, $value, $alpha);
@@ -177,6 +179,7 @@ namespace Carica\CanvasGraphics {
      * @param float $saturation
      * @param float $lightness
      * @return Color
+     * @throws \LogicException
      */
     public static function createFromHSL(float $hue, float $saturation, float $lightness): self {
       return self::createFromArray(self::convertHSLToRGB($hue, $saturation , $lightness));
@@ -249,7 +252,7 @@ namespace Carica\CanvasGraphics {
      * @param int|float $maximum
      * @throws \OutOfRangeException
      */
-    private function validateValue($value, $minimum, $maximum) {
+    private function validateValue($value, $minimum, $maximum): void {
       if ($value < $minimum || $value > $maximum) {
         throw new \OutOfRangeException("Value needs to be between $minimum and $maximum.");
       }
@@ -328,13 +331,14 @@ namespace Carica\CanvasGraphics {
      * @param string $offset
      * @return bool
      */
-    public function __isset($offset) {
+    public function __isset($offset): bool {
       return $this->hasValue($offset);
     }
 
     /**
      * @param string $offset
      * @return int|float
+     * @throws \LogicException
      */
     public function __get($offset) {
       return $this->getValue($offset);
@@ -418,9 +422,9 @@ namespace Carica\CanvasGraphics {
      * @param float $m1
      * @param float $m2
      * @param float $hue
-     * @return float|int
+     * @return float
      */
-    private static function convertHueToRGB(float $m1, float $m2, float $hue) {
+    private static function convertHueToRGB(float $m1, float $m2, float $hue): float {
       if ($hue < 0) {
         ++$hue;
       }
@@ -440,12 +444,12 @@ namespace Carica\CanvasGraphics {
     }
 
     /**
-     * @param $colorOne
-     * @param $colorTwo
-     * @param null|array $backgroundColor
-     * @return float|int
+     * @param array|Color $colorOne
+     * @param array|Color $colorTwo
+     * @param NULL|array|Color $backgroundColor
+     * @return float
      */
-    public static function computeDistance($colorOne, $colorTwo, $backgroundColor = NULL) {
+    public static function computeDistance($colorOne, $colorTwo, $backgroundColor = NULL): float {
       $colorOne = self::removeAlphaFromColor($colorOne, $backgroundColor);
       $colorTwo = self::removeAlphaFromColor($colorTwo, $backgroundColor);
       $difference = 0;
@@ -457,7 +461,7 @@ namespace Carica\CanvasGraphics {
 
     /**
      * @param array|Color $color
-     * @param null|array|Color $backgroundColor
+     * @param NULL|array|Color $backgroundColor
      * @return array|Color
      */
     public static function removeAlphaFromColor($color, $backgroundColor = NULL) {

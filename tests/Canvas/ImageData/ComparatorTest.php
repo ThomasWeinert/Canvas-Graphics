@@ -5,11 +5,11 @@ namespace Carica\CanvasGraphics\Canvas\ImageData {
   use Carica\CanvasGraphics\Canvas\GD\CanvasContext;
   use PHPUnit\Framework\TestCase;
 
+  /**
+   * @covers \Carica\CanvasGraphics\Canvas\ImageData\Comparator
+   */
   class ComparatorTest extends TestCase {
 
-    /**
-     * @covers \Carica\CanvasGraphics\Comparator
-     */
     public function testCompareSameImageExpecting100Percent() {
       $image = imagecreatetruecolor(10, 10);
       imagefilledrectangle($image, 0, 0, 9, 9, imagecolorallocate($image, 0,0,0));
@@ -20,9 +20,6 @@ namespace Carica\CanvasGraphics\Canvas\ImageData {
       $this->assertEquals(1, $difference);
     }
 
-    /**
-     * @covers \Carica\CanvasGraphics\Comparator
-     */
     public function testCompareSameImageWithHalfAccuracyExpecting100Percent() {
       $image = imagecreatetruecolor(10, 10);
       imagefilledrectangle($image, 0, 0, 9, 9, imagecolorallocate($image, 0,0,0));
@@ -33,9 +30,6 @@ namespace Carica\CanvasGraphics\Canvas\ImageData {
       $this->assertEquals(1, $difference);
     }
 
-    /**
-     * @covers \Carica\CanvasGraphics\Comparator
-     */
     public function testCompareBlackAndWhiteImagesExpecting0Percent() {
       $imageA = imagecreatetruecolor(10, 10);
       imagefilledrectangle($imageA, 0, 0, 9, 9, imagecolorallocate($imageA, 0,0,0));
@@ -49,9 +43,6 @@ namespace Carica\CanvasGraphics\Canvas\ImageData {
       $this->assertEquals(0, $difference);
     }
 
-    /**
-     * @covers \Carica\CanvasGraphics\Comparator
-     */
     public function testCompareBlackAndHalfWhiteImagesExpecting50Percent() {
       $imageA = imagecreatetruecolor(10, 10);
       imagefilledrectangle($imageA, 0, 0, 9, 9, imagecolorallocate($imageA, 0,0,0));
@@ -65,9 +56,6 @@ namespace Carica\CanvasGraphics\Canvas\ImageData {
       $this->assertEquals(0.5, $difference);
     }
 
-    /**
-     * @covers \Carica\CanvasGraphics\Comparator
-     */
     public function testCompareImagesWithDifferenceSizeExpectingException() {
       $imageA = imagecreatetruecolor(10, 10);
       $imageB = imagecreatetruecolor(5, 5);
