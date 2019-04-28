@@ -173,6 +173,34 @@ namespace Carica\CanvasGraphics {
     }
 
     /**
+     * Create color from (hex) string
+     *
+     * @param string $string
+     * @return \Carica\CanvasGraphics\Color
+     */
+    public static function createFromString(string $string): self {
+      $pattern = '(#(?:[a-fA-F\\d]{3,4}|(?:[a-fA-F\\d]{1,2}){3,4}))';
+      if (preg_match($pattern, $string, $matches)) {
+        $c = strlen($string);
+        $step = $c < 5 ? 1 : 2;
+        $parts = [];
+        for ($i = 1; $i < $c; $i += $step) {
+          $part = substr($string, $i, $step);
+          if (strlen($part) === '') {
+            $part = 'ff';
+          } elseif (strlen($part) < 2) {
+            $part .= $part;
+          }
+          $parts[] = hexdec($part);
+        }
+        return new self(...$parts);
+      }
+      throw new \InvalidArgumentException(
+        sprintf('Invalid color string: "%s"', $string)
+      );
+    }
+
+    /**
      * Create a rbg color from HSL
      *
      * @param float $hue

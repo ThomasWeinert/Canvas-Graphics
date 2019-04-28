@@ -50,5 +50,21 @@ namespace Carica\CanvasGraphics {
       $color = Color::removeAlphaFromColor(Color::createFromArray($color), $background);
       $this->assertEquals($expected, $color->toHexString());
     }
+
+    /**
+     * @covers ::createFromString
+     *
+     * @param $expected
+     * @param $colorString
+     *
+     * @testWith
+     *   ["#f00", "#f00"]
+     *   ["#f00", "#ff0000"]
+     *   ["#fab", "#ffaabb"]
+     */
+    public function testCreateFromString($expected, $colorString): void {
+      $colorString = Color::createFromString($colorString);
+      $this->assertEquals($expected, $colorString->toHexString());
+    }
   }
 }

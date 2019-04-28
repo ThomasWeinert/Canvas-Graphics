@@ -43,7 +43,9 @@ if (
           Vectorizer\Primitive::OPTION_ITERATION_STOP_MUTATION_FAILURES => $mutationFailureLimit, //30
           Vectorizer\Primitive::OPTION_SHAPE_TYPE => $shapeType,
           Vectorizer\Primitive::OPTION_OPACITY_START => $alphaTransparency,
-          Vectorizer\Primitive::OPTION_OPACITY_ADJUST => $adjustAlphaTransparency
+          Vectorizer\Primitive::OPTION_OPACITY_ADJUST => $adjustAlphaTransparency,
+          //Vectorizer\Primitive::OPTION_BACKGROUND_COLOR => '#FFF',
+          //Vectorizer\Primitive::OPTION_BACKGROUND_TRANSPARENT => FALSE
         ]
       );
       $svg = new SVG\Document(

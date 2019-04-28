@@ -23,6 +23,8 @@ namespace Carica\CanvasGraphics\Vectorizer {
     public const OPTION_OPACITY_ADJUST = 'opacity_adjust';
     public const OPTION_ITERATION_START_SHAPES = 'shapes_start_random';
     public const OPTION_ITERATION_STOP_MUTATION_FAILURES = 'shapes_mutation_failures';
+    public const OPTION_BACKGROUND_COLOR = 'option_background_color';
+    public const OPTION_BACKGROUND_TRANSPARENT = 'option_background_transparent';
 
     public const SHAPE_TRIANGLE = 'triangle';
     public const SHAPE_QUADRILATERAL = 'quadrilateral';
@@ -47,7 +49,12 @@ namespace Carica\CanvasGraphics\Vectorizer {
       self::OPTION_SHAPE_TYPE => self::SHAPE_TRIANGLE,
 
       self::OPTION_OPACITY_START => 1.0,
-      self::OPTION_OPACITY_ADJUST => FALSE
+      self::OPTION_OPACITY_ADJUST => FALSE,
+
+      // leave empty to compile from the source image
+      self::OPTION_BACKGROUND_COLOR => '',
+      // do not define background color in output
+      self::OPTION_BACKGROUND_TRANSPARENT => FALSE
     ];
     /**
      * @var Options
@@ -86,19 +93,28 @@ namespace Carica\CanvasGraphics\Vectorizer {
       $height = $original->height;
 
       $palette = \array_values(\iterator_to_array(new ColorThief($original, 2)));
-      $backgroundColor = $palette[0];
+      if (!empty($this->_options[self::OPTION_BACKGROUND_COLOR])) {
+        $backgroundColor = Color::createFromString(
+          $this->_options[self::OPTION_BACKGROUND_COLOR]
+        );
+        array_unshift($palette, $backgroundColor);
+      } else {
+        $backgroundColor = $palette[0];
+      }
 
       $parent = $svg->getShapesNode();
       $document = $parent->ownerDocument;
 
       /** @var \DOMElement $background */
-      $background = $parent->appendChild(
-        $document->createElementNS(self::XMLNS_SVG, 'path')
-      );
-      $background->setAttribute('fill', $backgroundColor->toHexString());
-      $background->setAttribute(
-        'd', sprintf('M%d %dh%dv%dH0z', -$width, -$height, $width * 3, $height * 3)
-      );
+      if (!$this->_options[self::OPTION_BACKGROUND_TRANSPARENT]) {
+        $background = $parent->appendChild(
+          $document->createElementNS(self::XMLNS_SVG, 'path')
+        );
+        $background->setAttribute('fill', $backgroundColor->toHexString());
+        $background->setAttribute(
+          'd', sprintf('M%d %dh%dv%dH0z', -$width, -$height, $width * 3, $height * 3)
+        );
+      }
 
       $target = Image::create($width, $height);
       $targetContext = $target->getContext('2d');
