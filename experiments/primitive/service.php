@@ -30,7 +30,10 @@ if (
     if ($image) {
 
       $image->filter(
-        new CanvasGraphics\Canvas\GD\Filter\LimitSize(150, 150)
+        new CanvasGraphics\Canvas\GD\Filter\LimitSize(150, 150)/*,
+        new CanvasGraphics\Canvas\GD\Filter\BackgroundColor(
+          CanvasGraphics\Color::createFromString('#FFF')
+        )*/
       );
       $start = microtime(TRUE);
       $context = $image->getContext('2d');
