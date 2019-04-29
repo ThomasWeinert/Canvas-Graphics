@@ -2,6 +2,7 @@
 namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
 
   use Carica\CanvasGraphics\Canvas\CanvasContext2D;
+  use Carica\CanvasGraphics\Color;
   use Carica\CanvasGraphics\SVG\Document;
   use Carica\CanvasGraphics\Vectorizer\Primitive\Shape;
 
@@ -48,8 +49,8 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
       $path->setAttribute('d', str_replace(' -', '-', $dimensions));
     }
 
-    public function __construct(int $width, int $height) {
-      parent::__construct($width, $height);
+    public function __construct(int $width, int $height, Color $backgroundColor) {
+      parent::__construct($width, $height, $backgroundColor);
       $this->_center = self::createRandomPoint($width, $height);
       $this->_width = \random_int(0, $width);
       $this->_height = \random_int(0, $height);

@@ -493,19 +493,23 @@ namespace Carica\CanvasGraphics {
      * @return array|Color
      */
     public static function removeAlphaFromColor($color, $backgroundColor = NULL) {
-      $backgroundColor = $backgroundColor ?? ['red' => 255, 'green' => 255, 'blue' => 255];
-      if ($color['alpha'] < 255) {
+      $backgroundColor = $backgroundColor ?: ['red' => 255, 'green' => 255, 'blue' => 255];
+      $alpha = $color['alpha'] ?? $color[4] ?? 255;
+      if ($alpha  < 255) {
         $backgroundRed = $backgroundColor['red'] ?? $backgroundColor[0];
         $backgroundGreen = $backgroundColor['green'] ?? $backgroundColor[1];
         $backgroundBlue = $backgroundColor['blue'] ?? $backgroundColor[2];
-        $factor = (float)$color['alpha'] / 255.0;
+        $factor = (float)$alpha / 255.0;
         $red = $backgroundRed * (1 - $factor) + $color['red'] * $factor;
         $green = $backgroundGreen * (1 - $factor) + $color['green'] * $factor;
         $blue = $backgroundBlue * (1 - $factor) + $color['blue'] * $factor;
         if ($color instanceof self) {
           return self::create($red, $green, $blue);
         }
-        return ['red' => $red, 'green' =>  $green, 'blue' => $blue, 'alpha' => 255];
+        if (isset($color['red'])) {
+          return ['red' => $red, 'green' => $green, 'blue' => $blue, 'alpha' => 255];
+        }
+        return [$red, $green, $blue, 255];
       }
       return $color;
     }

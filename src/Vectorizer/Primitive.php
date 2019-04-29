@@ -125,8 +125,8 @@ namespace Carica\CanvasGraphics\Vectorizer {
         $createShape = $this->_events['shape-create'];
       } else {
         $shapeClass = self::SHAPES[$this->_options[self::OPTION_SHAPE_TYPE]] ?? Shape\Triangle::class;
-        $createShape = function (int $width, int $height, int $index) use ($shapeClass) {
-          return new $shapeClass($width, $height, $index);
+        $createShape = static function (int $width, int $height, int $corners) use ($shapeClass, $backgroundColor) {
+          return new $shapeClass($width, $height, $backgroundColor, $corners);
         };
       }
 

@@ -23,6 +23,10 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
      */
     private $_color;
     /**
+     * @var \Carica\CanvasGraphics\Color
+     */
+    private $_backgroundColor;
+    /**
      * @var int
      */
     private $_imageWidth;
@@ -48,9 +52,12 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
 
     abstract public function getBoundingBox(): array;
 
-    public function __construct(int $width, int $height) {
+    public function __construct(
+      int $width, int $height, Color $backgroundColor
+    ) {
       $this->_imageWidth = $width;
       $this->_imageHeight = $height;
+      $this->_backgroundColor = $backgroundColor;
     }
 
     public static function createRandomPoint(int $width, int $height): array {
@@ -74,7 +81,7 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
       return $this->_canvasContext;
     }
 
-    public function eachPoint(\Closure $callback) {
+    public function eachPoint(\Closure $callback): void {
       if (NULL === $this->_visibleOffsets) {
         $box = $this->getBoundingBox();
         $data = $this->rasterize()->getImageData()->data;
@@ -110,7 +117,7 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
       if (NULL === $this->_visibleOffsets) {
         $distanceChange = $initial;
         $this->eachPoint(
-          function(...$offsets) use (&$distanceChange, $callback) {
+          static function(...$offsets) use (&$distanceChange, $callback) {
             $distanceChange = $callback($distanceChange, ...$offsets);
           }
         );
@@ -118,7 +125,7 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
       }
       return \array_reduce(
         $this->_visibleOffsets,
-        function($carry, $offsets) use ($callback) {
+        static function($carry, $offsets) use ($callback) {
           return $callback($carry, ...$offsets);
         },
         $initial
@@ -141,10 +148,10 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
         $distanceShape = 0;
         $this->eachPoint(
           function(int $fi) use (&$distanceShape, $original, $target, $shapeColor, $shapePixel) {
-            $originalPixel = $this->getPixel($original->data, $fi);
+            $originalPixel = $this->getPixel($original->data, $fi, $this->_backgroundColor);
             $pixel = $shapePixel;
             if ($shapeColor->alpha < 255) {
-              $targetPixel = $this->getPixel($target->data, $fi);
+              $targetPixel = $this->getPixel($target->data, $fi, $this->_backgroundColor);
               $pixel = Color::removeAlphaFromColor($shapeColor, $targetPixel);
             }
             $distanceShape += $this->getPixelDistance($originalPixel, $pixel);
@@ -155,8 +162,8 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
         $distanceShape = 0;
         $this->eachPoint(
           function(int $fi) use (&$distanceTarget, &$distanceShape, $original, $target, $shapeColor, $shapePixel) {
-            $originalPixel = $this->getPixel($original->data, $fi);
-            $targetPixel = $this->getPixel($target->data, $fi);
+            $originalPixel = $this->getPixel($original->data, $fi, $this->_backgroundColor);
+            $targetPixel = $this->getPixel($target->data, $fi, $this->_backgroundColor);
             $distanceTarget += $this->getPixelDistance($originalPixel, $targetPixel);
 
             $pixel = $shapePixel;
@@ -175,18 +182,25 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
       return -$distanceTarget + $distanceShape;
     }
 
-    private function getPixel(array $data, $index): array {
-      return [
+    private function getPixel(array $data, $index, $backgroundColor) {
+      $pixel = [
         $data[$index], $data[$index + 1], $data[$index + 2], $data[$index + 3]
       ];
+      if ($pixel[3] < 255) {
+        return Color::removeAlphaFromColor($pixel, $backgroundColor);
+      }
+      return $pixel;
     }
 
     public function getPixelDistance($a, $b) {
-      return (
-          \abs($a[0] - $b[0]) +
-          \abs($a[1] - $b[1]) +
-          \abs($a[2] - $b[2])
-        ) / (255 * 3);
+      $redness = (float)($a[0] + $b[0]) / 2;
+      $deltaRed = (float)($a[0] - $b[0]) ** 2;
+      $deltaGreen = (float)($a[1] - $b[1]) ** 2;
+      $deltaBlue = (float)($a[2] - $b[2]) ** 2;
+      return
+        (2 + $redness / 256) * $deltaRed +
+        4 * $deltaGreen +
+        (2 + (255 - $redness) / 256) * $deltaBlue;
     }
 
     public function __clone() {
@@ -199,18 +213,18 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive {
       ];
     }
 
-    public function setColor(Color $color) {
+    public function setColor(Color $color): void {
       $this->_color = clone $color;
     }
 
-    public function getColor() {
+    public function getColor(): Color {
       if (NULL === $this->_color) {
         $this->_color = Color::createGray(0);
       }
       return $this->_color;
     }
 
-    protected function isOutsideImage($boundingBox) {
+    protected function isOutsideImage($boundingBox): bool {
       return (
         $boundingBox['bottom'] < 0 ||
         $boundingBox['right'] < 0 ||

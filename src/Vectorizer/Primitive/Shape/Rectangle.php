@@ -2,6 +2,7 @@
 namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
 
   use Carica\CanvasGraphics\Canvas\CanvasContext2D;
+  use Carica\CanvasGraphics\Color;
   use Carica\CanvasGraphics\SVG\Document;
   use Carica\CanvasGraphics\Vectorizer\Primitive\Shape;
 
@@ -39,8 +40,8 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
       );
     }
 
-    public function __construct(int $width, int $height) {
-      parent::__construct($width, $height);
+    public function __construct(int $width, int $height, Color $backgroundColor) {
+      parent::__construct($width, $height, $backgroundColor);
       $x1 = self::createRandomPoint($width, $height);
       $x2 = self::createRandomPoint($width, $height);
       $this->_left = \min($x1[0], $x2[0]);

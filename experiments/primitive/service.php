@@ -29,11 +29,10 @@ if (
     $image = CanvasGraphics\Canvas\GD\Image::load($_FILES['bitmap']['tmp_name']);
     if ($image) {
 
+      $backgroundColor = '#FFF';
+
       $image->filter(
-        new CanvasGraphics\Canvas\GD\Filter\LimitSize(150, 150)/*,
-        new CanvasGraphics\Canvas\GD\Filter\BackgroundColor(
-          CanvasGraphics\Color::createFromString('#FFF')
-        )*/
+        new CanvasGraphics\Canvas\GD\Filter\LimitSize(150, 150)
       );
       $start = microtime(TRUE);
       $context = $image->getContext('2d');
@@ -47,8 +46,8 @@ if (
           Vectorizer\Primitive::OPTION_SHAPE_TYPE => $shapeType,
           Vectorizer\Primitive::OPTION_OPACITY_START => $alphaTransparency,
           Vectorizer\Primitive::OPTION_OPACITY_ADJUST => $adjustAlphaTransparency,
-          //Vectorizer\Primitive::OPTION_BACKGROUND_COLOR => '#FFF',
-          //Vectorizer\Primitive::OPTION_BACKGROUND_TRANSPARENT => FALSE
+          Vectorizer\Primitive::OPTION_BACKGROUND_COLOR => $backgroundColor,
+          Vectorizer\Primitive::OPTION_BACKGROUND_TRANSPARENT => FALSE
         ]
       );
       $svg = new SVG\Document(

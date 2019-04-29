@@ -2,6 +2,7 @@
 namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
 
   use Carica\CanvasGraphics\Canvas\CanvasContext2D;
+  use Carica\CanvasGraphics\Color;
   use Carica\CanvasGraphics\SVG\Document;
   use Carica\CanvasGraphics\Vectorizer\Primitive\Shape;
 
@@ -48,8 +49,10 @@ namespace Carica\CanvasGraphics\Vectorizer\Primitive\Shape {
       $path->setAttribute('d', str_replace(' -', '-', $dimensions));
     }
 
-    public function __construct(int $width, int $height, int $corners) {
-      parent::__construct($width, $height);
+    public function __construct(
+      int $width, int $height, Color $backgroundColor, int $corners
+    ) {
+      parent::__construct($width, $height, $backgroundColor);
       $this->_points = $this->getMutatedPoints($this->_createPoints($width, $height, $corners));
     }
 
