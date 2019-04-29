@@ -46,8 +46,8 @@ if (
           Vectorizer\Primitive::OPTION_SHAPE_TYPE => $shapeType,
           Vectorizer\Primitive::OPTION_OPACITY_START => $alphaTransparency,
           Vectorizer\Primitive::OPTION_OPACITY_ADJUST => $adjustAlphaTransparency,
-          Vectorizer\Primitive::OPTION_BACKGROUND_COLOR => $backgroundColor,
-          Vectorizer\Primitive::OPTION_BACKGROUND_TRANSPARENT => FALSE
+          //Vectorizer\Primitive::OPTION_BACKGROUND_COLOR => $backgroundColor,
+          //Vectorizer\Primitive::OPTION_BACKGROUND_TRANSPARENT => FALSE
         ]
       );
       $svg = new SVG\Document(
