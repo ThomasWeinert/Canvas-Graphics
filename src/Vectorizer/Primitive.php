@@ -26,6 +26,7 @@ namespace Carica\CanvasGraphics\Vectorizer {
     public const OPTION_BACKGROUND_COLOR = 'option_background_color';
     public const OPTION_BACKGROUND_TRANSPARENT = 'option_background_transparent';
 
+    public const SHAPE_RANDOM = 'random';
     public const SHAPE_TRIANGLE = 'triangle';
     public const SHAPE_QUADRILATERAL = 'quadrilateral';
     public const SHAPE_RECTANGLE = 'rectangle';
@@ -123,6 +124,13 @@ namespace Carica\CanvasGraphics\Vectorizer {
 
       if (NULL !== $this->_events['shape-create']) {
         $createShape = $this->_events['shape-create'];
+      } elseif (
+        $this->_options[self::OPTION_SHAPE_TYPE] === self::SHAPE_RANDOM
+      ) {
+        $createShape = static function (int $width, int $height, int $corners) use($backgroundColor) {
+          $shapeClass = self::SHAPES[array_rand(self::SHAPES)];
+          return new $shapeClass($width, $height, $backgroundColor, $corners);
+        };
       } else {
         $shapeClass = self::SHAPES[$this->_options[self::OPTION_SHAPE_TYPE]] ?? Shape\Triangle::class;
         $createShape = static function (int $width, int $height, int $corners) use ($shapeClass, $backgroundColor) {
