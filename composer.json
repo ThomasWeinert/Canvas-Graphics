@@ -1,7 +1,13 @@
 {
+  "name": "thomasweinert/canvas-graphics",
+  "license": "MIT",
   "autoload" : {
     "psr-4" : {
       "Carica\\CanvasGraphics\\" : "src/"
     }
+  },
+  "require": {
+    "ext-gd": "*",
+    "ext-dom": "*"
   }
 }
