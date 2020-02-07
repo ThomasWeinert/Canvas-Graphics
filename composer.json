@@ -1,5 +1,5 @@
 {
-  "name": "thomasweinert/canvas-graphics",
+  "name": "carica/canvas-graphics",
   "license": "MIT",
   "autoload" : {
     "psr-4" : {
